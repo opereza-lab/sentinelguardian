@@ -36,10 +36,23 @@ function getGPS() {
   });
 }
 
+function getEmergencyContacts() {
+  try {
+    const saved = localStorage.getItem("sg_emergency_contacts");
+    return saved ? JSON.parse(saved) : [];
+  } catch { return []; }
+}
+
 function buildSMSLink(coords) {
+  const contacts = getEmergencyContacts();
   const mapsUrl = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
   const msg = `🆘 EMERGENCIA SOS\nUbicación GPS: ${coords.lat}, ${coords.lng}\nPrecisión: ~${coords.acc}m\nVer en mapa: ${mapsUrl}\nNecesito ayuda urgente.`;
-  return `sms:?body=${encodeURIComponent(msg)}`;
+
+  // Si hay contactos, enviar al primero (SMS link solo admite un número a la vez)
+  const firstContact = contacts.find(c => c.phone);
+  const phoneNumber = firstContact ? firstContact.phone.replace(/\s+/g, "") : "";
+
+  return `sms:${phoneNumber}?body=${encodeURIComponent(msg)}`;
 }
 
 export default function SOSSwipePanel({ visible, onClose }) {
@@ -280,16 +293,35 @@ export default function SOSSwipePanel({ visible, onClose }) {
             {holding ? "Suelta para cancelar..." : isActive ? "Mantén 3 seg para DESACTIVAR" : "Mantén 3 seg para ACTIVAR"}
           </p>
 
-          {/* Botón SMS — visible cuando SOS activo y hay coordenadas */}
-          {isActive && coords && (
-            <a
-              href={buildSMSLink(coords)}
-              className="w-full max-w-xs flex items-center justify-center gap-2 bg-green-700 hover:bg-green-600 text-white font-black text-base py-4 rounded-2xl border-2 border-green-500 shadow-lg transition-all"
-              style={{ letterSpacing: 1 }}
-            >
-              📲 ENVIAR COORDENADAS POR SMS
-            </a>
-          )}
+          {/* Botones SMS — uno por cada contacto cuando SOS activo */}
+          {isActive && coords && (() => {
+            const contacts = getEmergencyContacts();
+            if (contacts.length === 0) return (
+              <div className="w-full max-w-xs text-center">
+                <a href={buildSMSLink(coords)} className="w-full flex items-center justify-center gap-2 bg-green-700 hover:bg-green-600 text-white font-black text-base py-4 rounded-2xl border-2 border-green-500 shadow-lg transition-all" style={{ letterSpacing: 1 }}>
+                  📲 ENVIAR COORDENADAS POR SMS
+                </a>
+                <p className="text-xs text-zinc-500 mt-1">Agrega contactos en Perfil SOS</p>
+              </div>
+            );
+            return (
+              <div className="w-full max-w-xs space-y-2">
+                <p className="text-xs text-zinc-500 uppercase tracking-widest text-center">Enviar a contactos de emergencia</p>
+                {contacts.map((c, i) => {
+                  const phone = c.phone?.replace(/\s+/g, "") || "";
+                  const mapsUrl = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
+                  const msg = `🆘 EMERGENCIA SOS\nUbicación GPS: ${coords.lat}, ${coords.lng}\nPrecisión: ~${coords.acc}m\nVer en mapa: ${mapsUrl}\nNecesito ayuda urgente.`;
+                  const smsLink = `sms:${phone}?body=${encodeURIComponent(msg)}`;
+                  return (
+                    <a key={i} href={smsLink} className="w-full flex items-center justify-between gap-2 bg-green-800 hover:bg-green-700 text-white font-bold text-sm py-3 px-4 rounded-xl border border-green-600 shadow-lg transition-all">
+                      <span>📲 {c.name}</span>
+                      <span className="text-green-400 text-xs">{c.phone}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {isActive && !coords && (
             <p className="text-sm text-yellow-400 text-center">⚠ Activa el GPS para enviar coordenadas</p>
           )}

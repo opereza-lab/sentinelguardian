@@ -37,6 +37,10 @@ export default function EmergencyProfile() {
         sos_role: p.sos_role || "user",
         emergency_contacts: p.emergency_contacts || [],
       });
+      // Cachear contactos para acceso offline desde SOS
+      try {
+        localStorage.setItem("sg_emergency_contacts", JSON.stringify(p.emergency_contacts || []));
+      } catch {}
     } else {
       const deviceId = getOrCreateDeviceId();
       const created = await db.UserProfile.create({ device_id: deviceId, sos_role: "user" });
@@ -55,6 +59,10 @@ export default function EmergencyProfile() {
       const created = await db.UserProfile.create(data);
       setProfile(created);
     }
+    // Cachear contactos de emergencia en localStorage para acceso offline desde SOS
+    try {
+      localStorage.setItem("sg_emergency_contacts", JSON.stringify(form.emergency_contacts || []));
+    } catch {}
     setSaving(false);
   }
 
