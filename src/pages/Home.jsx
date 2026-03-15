@@ -7,7 +7,7 @@ import { Shield, AlertTriangle, MapPin, Droplets, Package, Heart, Backpack, Map,
 
 const content = {
   es: {
-    hero: { title: "EL MUNDO ESTÁ CAMBIANDO.", subtitle: "¿Tu familia sobrevivirá?", desc: "Misiles balísticos, ataques de infantería, colapso de infraestructuras. Ya no son escenarios de ficción. Son titulares de hoy. Cada día que pasa sin preparación es un día que le robas a la seguridad de los tuyos.", cta: "COMIENZA TU PROTOCOLO AHORA" },
+    hero: { title: "EL MUNDO ESTÁ CAMBIANDO.", subtitle: "¿SABES CÓMO PROTEGER A TU FAMILIA?", desc: "Misiles balísticos, ataques de infantería, colapso de infraestructuras, terremotos, tsunamis, incendios, tornados. Ya no son escenarios de ficción. Son titulares de hoy. Cada día que pasa sin preparación disminuye las oportunidades de mantener a salvo a tu familia y los tuyos.", cta: "COMIENZA POR APRENDER LO NECESARIO" },
     urgency: { title: "LA VENTANA DE PREPARACIÓN SE CIERRA", stats: [{ val: "72h", label: "Tiempo crítico tras un ataque antes de que los suministros colapsen" }, { val: "3.2B", label: "Personas viven en zonas de conflicto activo o latente" }, { val: "89%", label: "De las familias NO están preparadas para una emergencia de 72 horas" }] },
     modulesTitle: "MÓDULOS DE SUPERVIVENCIA",
     quote: "\"No hay segundas oportunidades cuando el cielo se ilumina. Solo hay familias preparadas... y las que no lo estaban.\"",
@@ -27,7 +27,7 @@ const content = {
     ],
   },
   en: {
-    hero: { title: "THE WORLD IS CHANGING.", subtitle: "Will your family survive?", desc: "Ballistic missiles, infantry attacks, infrastructure collapse. These are no longer fiction. They are today's headlines. Every unprepared day is a day stolen from your family's safety.", cta: "START YOUR PROTOCOL NOW" },
+    hero: { title: "THE WORLD IS CHANGING.", subtitle: "DO YOU KNOW HOW TO PROTECT YOUR FAMILY?", desc: "Ballistic missiles, infantry attacks, infrastructure collapse, earthquakes, tsunamis, wildfires, tornadoes. These are no longer fiction. They are today's headlines. Every day without preparation reduces the chances of keeping your family and loved ones safe.", cta: "START BY LEARNING WHAT YOU NEED" },
     urgency: { title: "THE PREPARATION WINDOW IS CLOSING", stats: [{ val: "72h", label: "Critical time after an attack before supplies collapse" }, { val: "3.2B", label: "People currently live in zones of active or latent conflict" }, { val: "89%", label: "Of families are NOT prepared for a 72-hour emergency" }] },
     modulesTitle: "SURVIVAL MODULES",
     quote: "\"There are no second chances when the sky lights up. Only families that were prepared... and those that weren't.\"",
@@ -47,7 +47,7 @@ const content = {
     ],
   },
   fr: {
-    hero: { title: "LE MONDE EST EN TRAIN DE CHANGER.", subtitle: "Votre famille survivra-t-elle?", desc: "Missiles balistiques, attaques d'infanterie, effondrement des infrastructures. Ce ne sont plus des scénarios de fiction. Ce sont les titres d'aujourd'hui. Chaque jour sans préparation est un jour volé à la sécurité des vôtres.", cta: "COMMENCEZ VOTRE PROTOCOLE MAINTENANT" },
+    hero: { title: "LE MONDE EST EN TRAIN DE CHANGER.", subtitle: "SAVEZ-VOUS COMMENT PROTÉGER VOTRE FAMILLE?", desc: "Missiles balistiques, attaques d'infanterie, effondrement des infrastructures, tremblements de terre, tsunamis, incendies, tornades. Ce ne sont plus des scénarios de fiction. Ce sont les titres d'aujourd'hui. Chaque jour sans préparation réduit les chances de garder votre famille et vos proches en sécurité.", cta: "COMMENCEZ PAR APPRENDRE CE QUI EST NÉCESSAIRE" },
     urgency: { title: "LA FENÊTRE DE PRÉPARATION SE FERME", stats: [{ val: "72h", label: "Temps critique après une attaque avant que les approvisionnements s'effondrent" }, { val: "3.2B", label: "Personnes vivent en zones de conflit actif ou latent" }, { val: "89%", label: "Des familles NE SONT PAS préparées pour une urgence de 72 heures" }] },
     modulesTitle: "MODULES DE SURVIE",
     quote: "\"Il n'y a pas de secondes chances quand le ciel s'illumine. Il n'y a que des familles préparées... et celles qui ne l'étaient pas.\"",
@@ -67,7 +67,7 @@ const content = {
     ],
   },
   pt: {
-    hero: { title: "O MUNDO ESTÁ MUDANDO.", subtitle: "Sua família vai sobreviver?", desc: "Mísseis balísticos, ataques de infantaria, colapso de infraestruturas. Já não são cenários de ficção. São as manchetes de hoje. Cada dia sem preparação é um dia roubado da segurança dos seus.", cta: "COMECE SEU PROTOCOLO AGORA" },
+    hero: { title: "O MUNDO ESTÁ MUDANDO.", subtitle: "VOCÊ SABE COMO PROTEGER SUA FAMÍLIA?", desc: "Mísseis balísticos, ataques de infantaria, colapso de infraestruturas, terremotos, tsunamis, incêndios, tornados. Já não são cenários de ficção. São as manchetes de hoje. Cada dia sem preparação reduz as oportunidades de manter sua família e seus entes queridos em segurança.", cta: "COMECE APRENDENDO O QUE É NECESSÁRIO" },
     urgency: { title: "A JANELA DE PREPARAÇÃO ESTÁ SE FECHANDO", stats: [{ val: "72h", label: "Tempo crítico após um ataque antes dos suprimentos colapsarem" }, { val: "3.2B", label: "Pessoas vivem em zonas de conflito ativo ou latente" }, { val: "89%", label: "Das famílias NÃO estão preparadas para uma emergência de 72 horas" }] },
     modulesTitle: "MÓDULOS DE SOBREVIVÊNCIA",
     quote: "\"Não há segunda chance quando o céu se ilumina. Só há famílias preparadas... e as que não estavam.\"",
@@ -87,7 +87,7 @@ const content = {
     ],
   },
   it: {
-    hero: { title: "IL MONDO STA CAMBIANDO.", subtitle: "La tua famiglia sopravviverà?", desc: "Missili balistici, attacchi di fanteria, collasso delle infrastrutture. Non sono più scenari di finzione. Sono i titoli di oggi. Ogni giorno senza preparazione è un giorno rubato alla sicurezza dei tuoi cari.", cta: "INIZIA IL TUO PROTOCOLLO ORA" },
+    hero: { title: "IL MONDO STA CAMBIANDO.", subtitle: "SAI COME PROTEGGERE LA TUA FAMIGLIA?", desc: "Missili balistici, attacchi di fanteria, collasso delle infrastrutture, terremoti, tsunami, incendi, tornado. Non sono più scenari di finzione. Sono i titoli di oggi. Ogni giorno senza preparazione riduce le opportunità di tenere al sicuro la tua famiglia e i tuoi cari.", cta: "INIZIA IMPARANDO CIÒ CHE È NECESSARIO" },
     urgency: { title: "LA FINESTRA DI PREPARAZIONE SI STA CHIUDENDO", stats: [{ val: "72h", label: "Tempo critico dopo un attacco prima che i rifornimenti collassino" }, { val: "3.2B", label: "Persone vivono in zone di conflitto attivo o latente" }, { val: "89%", label: "Delle famiglie NON sono preparate per un'emergenza di 72 ore" }] },
     modulesTitle: "MODULI DI SOPRAVVIVENZA",
     quote: "\"Non ci sono seconde possibilità quando il cielo si illumina. Ci sono solo famiglie preparate... e quelle che non lo erano.\"",
@@ -107,7 +107,7 @@ const content = {
     ],
   },
   ar: {
-    hero: { title: "العالم يتغير.", subtitle: "هل ستنجو عائلتك؟", desc: "صواريخ باليستية، هجمات مشاة، انهيار البنية التحتية. لم تعد سيناريوهات خيالية. إنها عناوين اليوم. كل يوم يمر دون استعداد هو يوم مسروق من أمان عائلتك.", cta: "ابدأ بروتوكولك الآن" },
+    hero: { title: "العالم يتغير.", subtitle: "هل تعرف كيف تحمي عائلتك؟", desc: "صواريخ باليستية، هجمات مشاة، انهيار البنية التحتية، زلازل، أمواج تسونامي، حرائق، أعاصير. لم تعد سيناريوهات خيالية. إنها عناوين اليوم. كل يوم يمر دون استعداد يقلل من فرص الحفاظ على سلامة عائلتك وأحبائك.", cta: "ابدأ بتعلم ما هو ضروري" },
     urgency: { title: "نافذة الاستعداد تضيق", stats: [{ val: "72h", label: "الوقت الحرج بعد الهجوم قبل انهيار الإمدادات" }, { val: "3.2B", label: "شخص يعيش في مناطق نزاع نشط أو كامن" }, { val: "89%", label: "من العائلات غير مستعدة لحالة طوارئ 72 ساعة" }] },
     modulesTitle: "وحدات البقاء",
     quote: "\"لا فرص ثانية عندما يضيء السماء. هناك فقط عائلات مستعدة... وتلك التي لم تكن كذلك.\"",
@@ -127,7 +127,7 @@ const content = {
     ],
   },
   zh: {
-    hero: { title: "世界正在改变。", subtitle: "你的家人能够生存吗？", desc: "弹道导弹、步兵袭击、基础设施崩溃。这些已不再是虚构场景。它们是今天的新闻头条。每一天不做准备，就是偷走一天家人的安全。", cta: "现在开始你的规程" },
+    hero: { title: "世界正在改变。", subtitle: "你知道如何保护你的家人吗？", desc: "弹道导弹、步兵袭击、基础设施崩溃、地震、海啸、火灾、龙卷风。这些已不再是虚构场景。它们是今天的新闻头条。每一天不做准备，都会减少保护家人和亲人安全的机会。", cta: "从学习必要知识开始" },
     urgency: { title: "准备窗口正在关闭", stats: [{ val: "72小时", label: "袭击后供应崩溃前的关键时间" }, { val: "32亿", label: "人生活在活跃或潜在冲突地区" }, { val: "89%", label: "的家庭没有准备好应对72小时紧急情况" }] },
     modulesTitle: "生存模块",
     quote: "\"当天空点亮的那一刻，没有第二次机会。只有准备好的家庭……和没准备好的。\"",
