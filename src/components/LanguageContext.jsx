@@ -1,6 +1,50 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 const LANG_KEY = "sg_lang";
+const LANG_AUTO_KEY = "sg_lang_auto_done";
+
+// Mapeo país → idioma
+const COUNTRY_TO_LANG = {
+  // Español
+  AR: "es", BO: "es", CL: "es", CO: "es", CR: "es", CU: "es",
+  DO: "es", EC: "es", SV: "es", GT: "es", HN: "es", MX: "es",
+  NI: "es", PA: "es", PY: "es", PE: "es", ES: "es", UY: "es", VE: "es",
+  // Portugués
+  BR: "pt", PT: "pt", AO: "pt", MZ: "pt",
+  // Francés
+  FR: "fr", BE: "fr", CH: "fr", LU: "fr", SN: "fr", CI: "fr", ML: "fr",
+  // Italiano
+  IT: "it",
+  // Árabe
+  SA: "ar", EG: "ar", AE: "ar", IQ: "ar", SY: "ar", JO: "ar",
+  LB: "ar", MA: "ar", DZ: "ar", TN: "ar", LY: "ar", YE: "ar",
+  // Chino
+  CN: "zh", TW: "zh", HK: "zh", SG: "zh",
+};
+
+async function detectLangByLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await res.json();
+          const countryCode = data.countryCode?.toUpperCase();
+          const lang = COUNTRY_TO_LANG[countryCode] || "en";
+          resolve(lang);
+        } catch {
+          resolve(null);
+        }
+      },
+      () => resolve(null),
+      { timeout: 5000, maximumAge: 60000 }
+    );
+  });
+}
 
 const translations = {
   es: {
@@ -92,11 +136,32 @@ export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(() => {
     try {
       const saved = localStorage.getItem(LANG_KEY);
-      return saved && translations[saved] ? saved : "es";
+      return saved && translations[saved] ? saved : null; // null = aún no determinado
     } catch {
       return "es";
     }
   });
+
+  const [langReady, setLangReady] = useState(false);
+
+  useEffect(() => {
+    const autoDone = localStorage.getItem(LANG_AUTO_KEY);
+    if (lang && autoDone) {
+      // Ya tiene idioma guardado y ya se hizo auto-detección antes
+      setLangReady(true);
+      return;
+    }
+    // Primera vez o sin idioma guardado → detectar por ubicación
+    detectLangByLocation().then((detected) => {
+      const finalLang = detected || lang || "es";
+      setLangState(finalLang);
+      try {
+        localStorage.setItem(LANG_KEY, finalLang);
+        localStorage.setItem(LANG_AUTO_KEY, "1");
+      } catch {}
+      setLangReady(true);
+    });
+  }, []);
 
   const setLang = (newLang) => {
     setLangState(newLang);
@@ -104,6 +169,8 @@ export function LanguageProvider({ children }) {
   };
 
   const t = translations[lang] || translations["es"];
+
+  if (!langReady) return null; // Espera breve mientras detecta
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t, translations }}>

@@ -25,12 +25,32 @@ function beep(audioCtxRef) {
   } catch (e) {}
 }
 
+function getGPS() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6), acc: Math.round(pos.coords.accuracy) }),
+      () => resolve(null),
+      { timeout: 10000, maximumAge: 30000, enableHighAccuracy: true }
+    );
+  });
+}
+
+function buildSMSLink(coords) {
+  const mapsUrl = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
+  const msg = `🆘 EMERGENCIA SOS\nUbicación GPS: ${coords.lat}, ${coords.lng}\nPrecisión: ~${coords.acc}m\nVer en mapa: ${mapsUrl}\nNecesito ayuda urgente.`;
+  return `sms:?body=${encodeURIComponent(msg)}`;
+}
+
 export default function SOSSwipePanel({ visible, onClose }) {
   const [sosActive, setSosActive] = useState(false);
   const [holding, setHolding] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(100);
+  const [coords, setCoords] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState(false);
 
   const countdownInterval = useRef(null);
   const warningTimer = useRef(null);
@@ -39,6 +59,7 @@ export default function SOSSwipePanel({ visible, onClose }) {
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
 
+  // Batería
   useEffect(() => {
     if ("getBattery" in navigator) {
       navigator.getBattery().then((b) => {
@@ -48,8 +69,30 @@ export default function SOSSwipePanel({ visible, onClose }) {
     }
   }, []);
 
+  // GPS — obtener al abrir el panel
+  useEffect(() => {
+    if (!visible) return;
+    setGpsLoading(true);
+    setGpsError(false);
+    getGPS().then((c) => {
+      setCoords(c);
+      setGpsLoading(false);
+      if (!c) setGpsError(true);
+    });
+  }, [visible]);
+
+  // Actualizar GPS cada 30 segundos cuando SOS está activo
+  useEffect(() => {
+    if (!sosActive) return;
+    const interval = setInterval(() => {
+      getGPS().then((c) => { if (c) setCoords(c); });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [sosActive]);
+
   const isLowBattery = batteryLevel <= LOW_BATTERY_THRESHOLD;
 
+  // Pitido sincronizado con pulse
   useEffect(() => {
     clearInterval(beepInterval.current);
     if (!sosActive) return;
@@ -138,7 +181,12 @@ export default function SOSSwipePanel({ visible, onClose }) {
 
       <div
         className="fixed top-0 right-0 h-full w-full z-50 flex flex-col bg-zinc-950 transition-transform duration-300"
-        style={{ transform: visible ? "translateX(0)" : "translateX(100%)" }}
+        style={{ 
+          transform: visible ? "translateX(0)" : "translateX(100%)",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          WebkitTouchCallout: "none",
+        }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -160,14 +208,27 @@ export default function SOSSwipePanel({ visible, onClose }) {
         </div>
 
         {/* CUERPO */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 overflow-y-auto py-4">
 
           {/* Status */}
           <div className={`text-sm font-black uppercase tracking-widest px-5 py-2 rounded-full border-2 ${isActive ? "bg-green-900/60 text-green-300 border-green-700" : "bg-red-900/40 text-red-300 border-red-800"}`}>
             {isActive ? "● SOS ACTIVO" : "○ SOS INACTIVO"}
           </div>
 
-          {/* Advertencia — grande, arriba del botón */}
+          {/* GPS */}
+          <div className={`w-full max-w-xs rounded-xl px-4 py-3 text-center border ${coords ? "bg-zinc-900 border-zinc-700" : "bg-zinc-900/50 border-zinc-800"}`}>
+            {gpsLoading && <p className="text-sm text-zinc-400">📡 Obteniendo ubicación GPS...</p>}
+            {!gpsLoading && coords && (<>
+              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">📍 Ubicación GPS</p>
+              <p className="text-base font-bold text-white font-mono">{coords.lat}, {coords.lng}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">Precisión: ~{coords.acc}m</p>
+            </>)}
+            {!gpsLoading && gpsError && (
+              <p className="text-sm text-yellow-400">⚠ GPS no disponible — activa la ubicación</p>
+            )}
+          </div>
+
+          {/* Advertencia */}
           {showWarning && !isActive && (
             <div className="w-full max-w-xs bg-red-950 border-2 border-red-600 rounded-2xl px-4 py-3 text-center shadow-2xl">
               <p className="text-base font-black text-red-300 mb-1">⚠️ ADVERTENCIA</p>
@@ -203,6 +264,10 @@ export default function SOSSwipePanel({ visible, onClose }) {
                 transition: "background 0.4s, box-shadow 0.4s",
                 cursor: "pointer",
                 WebkitUserSelect: "none",
+                MozUserSelect: "none",
+                msUserSelect: "none",
+                userSelect: "none",
+                WebkitTouchCallout: "none",
                 touchAction: "none",
                 letterSpacing: 2,
               }}
@@ -214,6 +279,20 @@ export default function SOSSwipePanel({ visible, onClose }) {
           <p className="text-sm text-zinc-400 text-center">
             {holding ? "Suelta para cancelar..." : isActive ? "Mantén 3 seg para DESACTIVAR" : "Mantén 3 seg para ACTIVAR"}
           </p>
+
+          {/* Botón SMS — visible cuando SOS activo y hay coordenadas */}
+          {isActive && coords && (
+            <a
+              href={buildSMSLink(coords)}
+              className="w-full max-w-xs flex items-center justify-center gap-2 bg-green-700 hover:bg-green-600 text-white font-black text-base py-4 rounded-2xl border-2 border-green-500 shadow-lg transition-all"
+              style={{ letterSpacing: 1 }}
+            >
+              📲 ENVIAR COORDENADAS POR SMS
+            </a>
+          )}
+          {isActive && !coords && (
+            <p className="text-sm text-yellow-400 text-center">⚠ Activa el GPS para enviar coordenadas</p>
+          )}
         </div>
 
         {/* FOOTER */}
@@ -226,6 +305,13 @@ export default function SOSSwipePanel({ visible, onClose }) {
         @keyframes sosPulse {
           0%, 100% { opacity: 0.4; transform: scale(0.93); }
           50% { opacity: 1; transform: scale(1.14); }
+        }
+        .sos-panel * {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
         }
       `}</style>
     </>
