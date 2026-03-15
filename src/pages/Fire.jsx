@@ -293,8 +293,11 @@ export default function Fire() {
           const isOpen = openId === m.id;
           return (
             <div key={m.id} className={`border rounded overflow-hidden ${m.border}`}>
-              <div className="flex items-stretch">
-                <button onClick={() => setOpenId(isOpen ? null : m.id)} className={`flex-1 flex items-center justify-between p-4 ${m.bg} hover:opacity-90 transition-all`}>
+              <div className="flex items-center">
+                <button
+                  onClick={() => setOpenId(isOpen ? null : m.id)}
+                  className={`flex-1 flex items-center justify-between px-5 py-4 text-left ${m.bg} hover:opacity-90 transition-all`}
+                >
                   <div className="flex items-center gap-4">
                     <span className="text-2xl">{m.emoji}</span>
                     <div className="text-left">
@@ -307,15 +310,16 @@ export default function Fire() {
                   </div>
                   {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
                 </button>
-              {METHOD_IMAGES[m.id] && (
-                <button
-                  className="flex items-center gap-1.5 px-4 py-4 text-xs font-medium text-primary hover:text-primary/80 hover:bg-secondary/40 transition-colors border-l border-border flex-shrink-0"
-                  onClick={() => setImageModal({ title: m.title, url: METHOD_IMAGES[m.id] })}
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{lang === "es" ? "Ver imagen" : lang === "fr" ? "Voir image" : lang === "pt" ? "Ver imagem" : lang === "it" ? "Vedi immagine" : lang === "ar" ? "عرض الصورة" : lang === "zh" ? "查看图片" : "View image"}</span>
-                </button>
-              )}
+                {METHOD_IMAGES[m.id] && (
+                  <button
+                    className="flex items-center gap-1.5 px-4 py-4 text-xs font-medium text-primary hover:text-primary/80 hover:bg-secondary/40 transition-colors border-l border-border flex-shrink-0"
+                    onClick={() => setImageModal({ title: m.title, url: METHOD_IMAGES[m.id] })}
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{lang === "es" ? "Ver imagen" : lang === "fr" ? "Voir image" : lang === "pt" ? "Ver imagem" : lang === "it" ? "Vedi immagine" : lang === "ar" ? "عرض الصورة" : lang === "zh" ? "查看图片" : "View image"}</span>
+                  </button>
+                )}
+              </div>
               {isOpen && (
                 <div className="p-5 bg-card border-t border-border space-y-4">
                   <ol className="space-y-2">
