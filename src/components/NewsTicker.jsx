@@ -1,149 +1,211 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Radio } from "lucide-react";
 import { useLang } from "./LanguageContext";
 
-const HEADLINES = {
+// Keywords for conflict/disaster news - optimized for the app's purpose
+const KEYWORDS = "war OR conflict OR attack OR bombing OR missile OR airstrike OR earthquake OR tsunami OR flood OR hurricane OR tornado OR terrorism OR terrorist OR explosion OR shooting OR massacre OR coup OR invasion OR ceasefire OR hostage OR kidnapping OR refugee OR displacement OR sanctions OR nuclear OR Trump OR Putin OR \"Strait of Hormuz\" OR Macron OR \"Pedro Sanchez\" OR Meloni OR Greenland OR Ukraine OR Gaza";
+
+const LIVE_LABEL = {
+  es: "EN VIVO", en: "LIVE", fr: "EN DIRECT",
+  pt: "AO VIVO", it: "IN DIRETTA", ar: "مباشر", zh: "直播",
+};
+
+// Static fallback headlines per language (used when all APIs fail)
+const STATIC_HEADLINES = {
   es: [
-    { title: "Conflictos armados continúan escalando en múltiples regiones del mundo", url: "https://www.bbc.com/news/world" },
-    { title: "Alerta de emergencia: autoridades piden preparación ante posibles crisis", url: "https://www.reuters.com" },
-    { title: "Expertos recomiendan tener reservas de agua y alimentos para 72 horas", url: "https://www.who.int" },
-    { title: "Nuevas tensiones geopolíticas aumentan riesgo de conflicto internacional", url: "https://www.reuters.com/world" },
-    { title: "Sistemas de alerta temprana activados en zonas de riesgo sísmico", url: "https://www.usgs.gov" },
-    { title: "Protección civil refuerza protocolos de evacuación en ciudades costeras", url: "https://www.bbc.com/news" },
-    { title: "Ciberataques a infraestructura crítica aumentan preocupación global", url: "https://www.reuters.com/technology" },
-    { title: "Cruz Roja llama a fortalecer preparación familiar ante emergencias", url: "https://www.icrc.org" },
-    { title: "Guía oficial: cómo preparar una mochila de emergencia para tu familia", url: "https://www.ready.gov" },
-    { title: "Alertas meteorológicas extremas activas en varias regiones", url: "https://www.weather.gov" },
-    { title: "ONU advierte sobre aumento de desplazados por conflictos armados", url: "https://www.unhcr.org" },
+    { title: "Últimas noticias de conflictos y emergencias mundiales — Reuters", url: "https://www.reuters.com/world" },
+    { title: "Cobertura de conflictos armados en tiempo real — BBC Mundo", url: "https://www.bbc.com/mundo" },
+    { title: "Alertas de catástrofes naturales y emergencias — Al Jazeera", url: "https://www.aljazeera.com/news" },
+    { title: "Últimas alertas sísmicas y tsunamis — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "Noticias de zonas de conflicto activo — AP News", url: "https://apnews.com/world-news" },
+    { title: "Alertas de emergencia y protección civil — OCHA", url: "https://www.unocha.org" },
+    { title: "Situación humanitaria mundial — UNHCR", url: "https://www.unhcr.org/news" },
   ],
   en: [
-    { title: "Armed conflicts continue escalating in multiple regions worldwide", url: "https://www.bbc.com/news/world" },
-    { title: "Emergency alert: authorities urge preparation for possible crises", url: "https://www.reuters.com" },
-    { title: "Experts recommend maintaining 72-hour water and food reserves", url: "https://www.who.int" },
-    { title: "Rising geopolitical tensions increase risk of international conflict", url: "https://www.reuters.com/world" },
-    { title: "Early warning systems activated in high seismic risk zones", url: "https://www.usgs.gov" },
-    { title: "Civil protection reinforces evacuation protocols in coastal cities", url: "https://www.bbc.com/news" },
-    { title: "Cyberattacks on critical infrastructure raise global concerns", url: "https://www.reuters.com/technology" },
-    { title: "Red Cross calls for strengthening family emergency preparedness", url: "https://www.icrc.org" },
-    { title: "Official guide: how to prepare an emergency go-bag for your family", url: "https://www.ready.gov" },
-    { title: "Extreme weather alerts active across multiple regions", url: "https://www.weather.gov" },
-    { title: "UN warns of increasing displacement due to armed conflicts", url: "https://www.unhcr.org" },
+    { title: "Latest conflict and emergency news worldwide — Reuters", url: "https://www.reuters.com/world" },
+    { title: "Live coverage of armed conflicts — BBC News", url: "https://www.bbc.com/news/world" },
+    { title: "Natural disaster and emergency alerts — Al Jazeera", url: "https://www.aljazeera.com/news" },
+    { title: "Latest seismic alerts and tsunamis — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "Breaking news from active conflict zones — AP News", url: "https://apnews.com/world-news" },
+    { title: "Global emergency and civil protection alerts — OCHA", url: "https://www.unocha.org" },
+    { title: "World humanitarian situation — UNHCR", url: "https://www.unhcr.org/news" },
   ],
   fr: [
-    { title: "Les conflits armés continuent d'escalader dans plusieurs régions du monde", url: "https://www.bbc.com/news/world" },
-    { title: "Alerte d'urgence: les autorités demandent une préparation aux crises éventuelles", url: "https://www.reuters.com" },
-    { title: "Les experts recommandent des réserves d'eau et de nourriture pour 72 heures", url: "https://www.who.int" },
-    { title: "Les tensions géopolitiques croissantes augmentent le risque de conflit international", url: "https://www.reuters.com/world" },
-    { title: "Systèmes d'alerte précoce activés dans les zones à risque sismique", url: "https://www.usgs.gov" },
-    { title: "La protection civile renforce les protocoles d'évacuation dans les villes côtières", url: "https://www.bbc.com/news" },
-    { title: "Les cyberattaques contre les infrastructures critiques augmentent les inquiétudes mondiales", url: "https://www.reuters.com/technology" },
-    { title: "La Croix-Rouge appelle à renforcer la préparation aux urgences familiales", url: "https://www.icrc.org" },
-    { title: "Guide officiel: comment préparer un sac d'urgence pour votre famille", url: "https://www.ready.gov" },
-    { title: "Alertes météorologiques extrêmes actives dans plusieurs régions", url: "https://www.weather.gov" },
-    { title: "L'ONU avertit de l'augmentation des déplacements dus aux conflits armés", url: "https://www.unhcr.org" },
+    { title: "Dernières nouvelles sur les conflits mondiaux — Reuters", url: "https://www.reuters.com/world" },
+    { title: "Couverture en direct des conflits armés — BBC", url: "https://www.bbc.com/news/world" },
+    { title: "Alertes catastrophes naturelles — Al Jazeera", url: "https://www.aljazeera.com/news" },
+    { title: "Dernières alertes sismiques — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "Actualités des zones de conflit — AP News", url: "https://apnews.com/world-news" },
+    { title: "Alertes d'urgence mondiales — OCHA", url: "https://www.unocha.org" },
+    { title: "Situation humanitaire mondiale — UNHCR", url: "https://www.unhcr.org/news" },
   ],
   pt: [
-    { title: "Conflitos armados continuam escalando em múltiplas regiões do mundo", url: "https://www.bbc.com/news/world" },
-    { title: "Alerta de emergência: autoridades pedem preparação para possíveis crises", url: "https://www.reuters.com" },
-    { title: "Especialistas recomendam manter reservas de água e alimentos para 72 horas", url: "https://www.who.int" },
-    { title: "Novas tensões geopolíticas aumentam o risco de conflito internacional", url: "https://www.reuters.com/world" },
-    { title: "Sistemas de alerta precoce ativados em zonas de alto risco sísmico", url: "https://www.usgs.gov" },
-    { title: "Proteção civil reforça protocolos de evacuação em cidades costeiras", url: "https://www.bbc.com/news" },
-    { title: "Ciberataques à infraestrutura crítica aumentam preocupação global", url: "https://www.reuters.com/technology" },
-    { title: "Cruz Vermelha pede fortalecimento da preparação familiar para emergências", url: "https://www.icrc.org" },
-    { title: "Guia oficial: como preparar uma mochila de emergência para sua família", url: "https://www.ready.gov" },
-    { title: "Alertas meteorológicos extremos ativos em várias regiões", url: "https://www.weather.gov" },
-    { title: "ONU alerta sobre aumento de deslocados por conflitos armados", url: "https://www.unhcr.org" },
+    { title: "Últimas notícias de conflitos mundiais — Reuters", url: "https://www.reuters.com/world" },
+    { title: "Cobertura ao vivo de conflitos armados — BBC", url: "https://www.bbc.com/news/world" },
+    { title: "Alertas de catástrofes naturais — Al Jazeera", url: "https://www.aljazeera.com/news" },
+    { title: "Últimos alertas sísmicos — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "Notícias de zonas de conflito — AP News", url: "https://apnews.com/world-news" },
+    { title: "Alertas de emergência global — OCHA", url: "https://www.unocha.org" },
+    { title: "Situação humanitária mundial — UNHCR", url: "https://www.unhcr.org/news" },
   ],
   it: [
-    { title: "I conflitti armati continuano ad escalare in più regioni del mondo", url: "https://www.bbc.com/news/world" },
-    { title: "Allerta di emergenza: le autorità chiedono preparazione a possibili crisi", url: "https://www.reuters.com" },
-    { title: "Gli esperti raccomandano riserve di acqua e cibo per 72 ore", url: "https://www.who.int" },
-    { title: "Nuove tensioni geopolitiche aumentano il rischio di conflitto internazionale", url: "https://www.reuters.com/world" },
-    { title: "Sistemi di allerta precoce attivati nelle zone ad alto rischio sismico", url: "https://www.usgs.gov" },
-    { title: "La protezione civile rafforza i protocolli di evacuazione nelle città costiere", url: "https://www.bbc.com/news" },
-    { title: "Cyberattacchi alle infrastrutture critiche aumentano le preoccupazioni globali", url: "https://www.reuters.com/technology" },
-    { title: "La Croce Rossa chiede di rafforzare la preparazione familiare alle emergenze", url: "https://www.icrc.org" },
-    { title: "Guida ufficiale: come preparare uno zaino di emergenza per la famiglia", url: "https://www.ready.gov" },
-    { title: "Allerte meteorologiche estreme attive in più regioni", url: "https://www.weather.gov" },
-    { title: "L'ONU avverte dell'aumento degli sfollati a causa dei conflitti armati", url: "https://www.unhcr.org" },
+    { title: "Ultime notizie sui conflitti mondiali — Reuters", url: "https://www.reuters.com/world" },
+    { title: "Copertura in diretta dei conflitti armati — BBC", url: "https://www.bbc.com/news/world" },
+    { title: "Allerte catastrofi naturali — Al Jazeera", url: "https://www.aljazeera.com/news" },
+    { title: "Ultime allerte sismiche — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "Notizie dalle zone di conflitto — AP News", url: "https://apnews.com/world-news" },
+    { title: "Allerte di emergenza globali — OCHA", url: "https://www.unocha.org" },
+    { title: "Situazione umanitaria mondiale — UNHCR", url: "https://www.unhcr.org/news" },
   ],
   ar: [
-    { title: "النزاعات المسلحة تتصاعد في مناطق متعددة حول العالم", url: "https://www.bbc.com/news/world" },
-    { title: "تحذير طوارئ: السلطات تطالب بالاستعداد لأزمات محتملة", url: "https://www.reuters.com" },
-    { title: "الخبراء يوصون بالاحتفاظ باحتياطيات مياه وغذاء لمدة 72 ساعة", url: "https://www.who.int" },
-    { title: "التوترات الجيوسياسية المتصاعدة تزيد من خطر النزاع الدولي", url: "https://www.reuters.com/world" },
-    { title: "تفعيل أنظمة الإنذار المبكر في مناطق الخطر الزلزالي", url: "https://www.usgs.gov" },
-    { title: "الحماية المدنية تعزز بروتوكولات الإخلاء في المدن الساحلية", url: "https://www.bbc.com/news" },
-    { title: "الهجمات الإلكترونية على البنية التحتية الحيوية تثير مخاوف عالمية", url: "https://www.reuters.com/technology" },
-    { title: "الصليب الأحمر يدعو إلى تعزيز الاستعداد الأسري لحالات الطوارئ", url: "https://www.icrc.org" },
-    { title: "دليل رسمي: كيفية إعداد حقيبة طوارئ لعائلتك", url: "https://www.ready.gov" },
-    { title: "تحذيرات طقس متطرفة نشطة في مناطق متعددة", url: "https://www.weather.gov" },
-    { title: "الأمم المتحدة تحذر من تزايد النازحين بسبب النزاعات المسلحة", url: "https://www.unhcr.org" },
+    { title: "آخر أخبار النزاعات والطوارئ العالمية — رويترز", url: "https://www.reuters.com/world" },
+    { title: "تغطية مباشرة للنزاعات المسلحة — BBC عربي", url: "https://www.bbc.com/arabic" },
+    { title: "تنبيهات الكوارث الطبيعية — الجزيرة", url: "https://www.aljazeera.net/news" },
+    { title: "آخر التنبيهات الزلزالية — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "أخبار مناطق النزاع — AP", url: "https://apnews.com/world-news" },
+    { title: "تنبيهات الطوارئ العالمية — أوتشا", url: "https://www.unocha.org" },
+    { title: "الوضع الإنساني العالمي — UNHCR", url: "https://www.unhcr.org/news" },
   ],
   zh: [
-    { title: "武装冲突在全球多个地区继续升级", url: "https://www.bbc.com/news/world" },
-    { title: "紧急警报：当局呼吁为可能发生的危机做好准备", url: "https://www.reuters.com" },
-    { title: "专家建议储备72小时的水和食物储备", url: "https://www.who.int" },
-    { title: "地缘政治紧张局势加剧国际冲突风险", url: "https://www.reuters.com/world" },
-    { title: "高地震风险地区早期预警系统启动", url: "https://www.usgs.gov" },
-    { title: "民防加强沿海城市疏散协议", url: "https://www.bbc.com/news" },
-    { title: "关键基础设施遭受网络攻击引发全球担忧", url: "https://www.reuters.com/technology" },
-    { title: "红十字会呼吁加强家庭应急准备", url: "https://www.icrc.org" },
-    { title: "官方指南：如何为家人准备应急包", url: "https://www.ready.gov" },
-    { title: "多个地区极端天气警报生效", url: "https://www.weather.gov" },
-    { title: "联合国警告武装冲突造成流离失所人数增加", url: "https://www.unhcr.org" },
+    { title: "全球冲突和紧急情况最新消息 — 路透社", url: "https://www.reuters.com/world" },
+    { title: "武装冲突实时报道 — BBC中文", url: "https://www.bbc.com/zhongwen/simp" },
+    { title: "自然灾害警报 — 半岛电视台", url: "https://www.aljazeera.com/news" },
+    { title: "最新地震海啸警报 — USGS", url: "https://www.usgs.gov/natural-hazards" },
+    { title: "冲突地区新闻 — AP通讯社", url: "https://apnews.com/world-news" },
+    { title: "全球紧急情况警报 — OCHA", url: "https://www.unocha.org" },
+    { title: "全球人道主义状况 — 联合国难民署", url: "https://www.unhcr.org/news" },
   ],
 };
 
-const LIVE_LABEL = {
-  es: "EN VIVO",
-  en: "LIVE",
-  fr: "EN DIRECT",
-  pt: "AO VIVO",
-  it: "IN DIRETTA",
-  ar: "مباشر",
-  zh: "直播",
-};
+// Cache to avoid hitting APIs on every render
+let cachedHeadlines = null;
+let cacheTime = 0;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+async function fetchFromNewsAPI(lang) {
+  const apiKey = import.meta.env.VITE_NEWSAPI_KEY;
+  if (!apiKey) return null;
+  const langParam = lang === "es" ? "&language=es" : lang === "fr" ? "&language=fr" : lang === "pt" ? "&language=pt" : lang === "it" ? "&language=it" : lang === "ar" ? "&language=ar" : lang === "zh" ? "&language=zh" : "&language=en";
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(KEYWORDS)}&sortBy=publishedAt&pageSize=15${langParam}&apiKey=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("NewsAPI failed");
+  const data = await res.json();
+  if (data.status !== "ok" || !data.articles?.length) throw new Error("No articles");
+  return data.articles.map(a => ({ title: a.title, url: a.url }));
+}
+
+async function fetchFromGNews(lang) {
+  const apiKey = import.meta.env.VITE_GNEWS_KEY;
+  if (!apiKey) return null;
+  const langParam = ["es","fr","pt","it","ar","zh"].includes(lang) ? lang : "en";
+  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent("war OR conflict OR attack OR earthquake OR tsunami OR terrorism OR disaster")}&lang=${langParam}&max=15&apikey=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("GNews failed");
+  const data = await res.json();
+  if (!data.articles?.length) throw new Error("No articles");
+  return data.articles.map(a => ({ title: a.title, url: a.url }));
+}
+
+async function fetchFromTheNewsAPI(lang) {
+  const apiKey = import.meta.env.VITE_THENEWSAPI_KEY;
+  if (!apiKey) return null;
+  const langParam = ["es","fr","pt","it","ar","zh"].includes(lang) ? lang : "en";
+  const url = `https://api.thenewsapi.com/v1/news/all?api_token=${apiKey}&categories=world,politics&language=${langParam}&limit=15&search=${encodeURIComponent("war conflict attack earthquake tsunami terrorism")}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("TheNewsAPI failed");
+  const data = await res.json();
+  if (!data.data?.length) throw new Error("No articles");
+  return data.data.map(a => ({ title: a.title, url: a.url }));
+}
+
+async function fetchHeadlines(lang) {
+  const now = Date.now();
+  if (cachedHeadlines && (now - cacheTime) < CACHE_DURATION) {
+    return cachedHeadlines;
+  }
+
+  // Layer 1: NewsAPI.org
+  try {
+    const articles = await fetchFromNewsAPI(lang);
+    if (articles && articles.length > 0) {
+      cachedHeadlines = articles;
+      cacheTime = now;
+      console.log("✅ Ticker: NewsAPI.org");
+      return articles;
+    }
+  } catch (e) {
+    console.warn("NewsAPI failed:", e.message);
+  }
+
+  // Layer 2: GNews.io
+  try {
+    const articles = await fetchFromGNews(lang);
+    if (articles && articles.length > 0) {
+      cachedHeadlines = articles;
+      cacheTime = now;
+      console.log("✅ Ticker: GNews.io (fallback)");
+      return articles;
+    }
+  } catch (e) {
+    console.warn("GNews failed:", e.message);
+  }
+
+  // Layer 3: TheNewsAPI.com
+  try {
+    const articles = await fetchFromTheNewsAPI(lang);
+    if (articles && articles.length > 0) {
+      cachedHeadlines = articles;
+      cacheTime = now;
+      console.log("✅ Ticker: TheNewsAPI.com (fallback)");
+      return articles;
+    }
+  } catch (e) {
+    console.warn("TheNewsAPI failed:", e.message);
+  }
+
+  // Layer 4: Static fallback
+  console.warn("⚠️ Ticker: all APIs failed, using static headlines");
+  return STATIC_HEADLINES[lang] || STATIC_HEADLINES["en"];
+}
 
 export default function NewsTicker() {
   const { lang } = useLang();
-  const headlines = HEADLINES[lang] || HEADLINES["en"];
   const liveLabel = LIVE_LABEL[lang] || LIVE_LABEL["en"];
+  const [headlines, setHeadlines] = useState(STATIC_HEADLINES[lang] || STATIC_HEADLINES["en"]);
+
+  useEffect(() => {
+    fetchHeadlines(lang).then(setHeadlines);
+    const interval = setInterval(() => {
+      cachedHeadlines = null; // force refresh
+      fetchHeadlines(lang).then(setHeadlines);
+    }, CACHE_DURATION);
+    return () => clearInterval(interval);
+  }, [lang]);
+
   const items = [...headlines, ...headlines];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 h-8 flex items-center overflow-hidden ticker-red-pulse" style={{background: "hsl(0 72% 20%)", borderTop: "2px solid hsl(0 72% 45%)"}}>
-      {/* Label */}
+    <div className="fixed bottom-0 left-0 right-0 z-50 h-8 flex items-center overflow-hidden ticker-red-pulse"
+      style={{background: "hsl(0 72% 20%)", borderTop: "2px solid hsl(0 72% 45%)"}}>
       <div className="flex items-center gap-1.5 px-3 h-full flex-shrink-0" style={{background: "hsl(0 72% 45%)"}}>
         <Radio className="w-3 h-3 text-white animate-pulse" />
         <span className="text-white font-military text-xs tracking-widest uppercase">{liveLabel}</span>
       </div>
-
-      {/* Scrolling area */}
       <div className="flex-1 overflow-hidden relative h-full flex items-center">
         <div
           className="flex items-center gap-0 whitespace-nowrap"
-          style={{
-            animation: `tickerScroll ${headlines.length * 8}s linear infinite`,
-          }}
+          style={{ animation: `tickerScroll ${headlines.length * 8}s linear infinite` }}
         >
           {items.map((item, i) => (
-            <a
-              key={i}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <a key={i} href={item.url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-3 text-xs text-white hover:text-red-300 transition-colors cursor-pointer px-6"
-              onClick={(e) => e.stopPropagation()}
-            >
+              onClick={(e) => e.stopPropagation()}>
               <span className="text-red-400 font-bold">▸</span>
               <span>{item.title}</span>
             </a>
           ))}
         </div>
       </div>
-
       <style>{`
         @keyframes tickerScroll {
           0% { transform: translateX(0); }
@@ -153,9 +215,7 @@ export default function NewsTicker() {
           0%, 100% { box-shadow: 0 0 8px 2px hsl(0 72% 45% / 0.6); }
           50% { box-shadow: 0 0 18px 6px hsl(0 72% 45% / 0.9); }
         }
-        .ticker-red-pulse {
-          animation: redPulse 2s ease-in-out infinite;
-        }
+        .ticker-red-pulse { animation: redPulse 2s ease-in-out infinite; }
       `}</style>
     </div>
   );
