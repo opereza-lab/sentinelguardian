@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { Flame, AlertTriangle, ChevronDown, ChevronUp, CheckCircle, XCircle, Wind, Droplets } from "lucide-react";
 
 const content = {
@@ -101,7 +102,7 @@ function FireVisual() {
 
 export default function Fire() {
   const { lang } = useLang();
-  const c = content[lang] || content["en"];
+  const c = getLangContent(content, lang);
   const [openId, setOpenId] = useState("lighter");
 
   return (

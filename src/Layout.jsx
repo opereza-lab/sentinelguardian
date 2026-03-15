@@ -167,9 +167,5 @@ function LayoutInner({ children }) {
 }
 
 export default function Layout({ children }) {
-  return (
-    <LanguageProvider>
-      <LayoutInner>{children}</LayoutInner>
-    </LanguageProvider>
-  );
+  return <LayoutInner>{children}</LayoutInner>;
 }

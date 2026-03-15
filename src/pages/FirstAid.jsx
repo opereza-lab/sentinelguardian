@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { Heart, AlertTriangle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 const content = {
@@ -35,7 +36,7 @@ const content = {
 
 export default function FirstAid() {
   const { lang, t } = useLang();
-  const c = content[lang] || content["en"];
+  const c = getLangContent(content, lang);
   const [openId, setOpenId] = useState("gunshot");
 
   return (

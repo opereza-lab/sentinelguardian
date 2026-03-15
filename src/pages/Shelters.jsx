@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { MapPin, Home, Building, Landmark, Trees, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 const content = {
@@ -31,7 +32,7 @@ const content = {
 
 export default function Shelters() {
   const { lang } = useLang();
-  const c = content[lang] || content["en"];
+  const c = getLangContent(content, lang);
   const [openIdx, setOpenIdx] = useState(0);
 
   return (

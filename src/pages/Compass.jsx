@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { Navigation, MapPin, Sun, Sunrise, Sunset, AlertTriangle, Info } from "lucide-react";
 
 // ── Sun position math ──────────────────────────────────────────────────────────
@@ -112,7 +113,7 @@ const content = {
 
 export default function Compass() {
   const { lang } = useLang();
-  const c = content[lang] || content["es"];
+  const c = getLangContent(content, lang);
   const [heading, setHeading] = useState(0);
   const [hasOrientation, setHasOrientation] = useState(null);
   const [orientationEnabled, setOrientationEnabled] = useState(false);

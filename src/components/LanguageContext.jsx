@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
+
+const LANG_KEY = "sg_lang";
 
 const translations = {
   es: {
@@ -87,8 +89,22 @@ const translations = {
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState("es");
-  const t = translations[lang];
+  const [lang, setLangState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LANG_KEY);
+      return saved && translations[saved] ? saved : "es";
+    } catch {
+      return "es";
+    }
+  });
+
+  const setLang = (newLang) => {
+    setLangState(newLang);
+    try { localStorage.setItem(LANG_KEY, newLang); } catch {}
+  };
+
+  const t = translations[lang] || translations["es"];
+
   return (
     <LanguageContext.Provider value={{ lang, setLang, t, translations }}>
       {children}

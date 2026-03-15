@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { Shield, AlertTriangle, MapPin, Droplets, Package, Heart, Backpack, Map, Phone, ChevronRight, Zap, Clock, Navigation, Flame, Anchor, User } from "lucide-react";
 
 const content = {
@@ -71,7 +72,7 @@ const content = {
 
 export default function Home() {
   const { lang } = useLang();
-  const c = content[lang] || content["en"];
+  const c = getLangContent(content, lang);
 
   return (
     <div className="min-h-screen">

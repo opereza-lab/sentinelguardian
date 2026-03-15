@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { AlertTriangle, Zap, Users, Bomb, Radio, ChevronDown, ChevronUp, Shield, Crosshair, Waves, Mountain, Flame, Wind } from "lucide-react";
 
 const content = {
@@ -39,7 +40,7 @@ const content = {
 
 export default function Threats() {
   const { lang } = useLang();
-  const c = content[lang] || content["en"];
+  const c = getLangContent(content, lang);
   const [openId, setOpenId] = useState("missile");
 
   return (

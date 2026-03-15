@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { db, auth } from "@/api/base44Client";
 import { Backpack, ExternalLink, CheckCircle, Circle, AlertTriangle } from "lucide-react";
 
@@ -36,7 +37,7 @@ const content = {
 
 export default function GoBackpack() {
   const { lang, t } = useLang();
-  const c = content[lang] || content["es"];
+  const c = getLangContent(content, lang);
   const [checked, setChecked] = useState({});
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);

@@ -1,5 +1,6 @@
 import React from "react";
 import { useLang } from "../components/LanguageContext";
+import { getLangContent } from "../utils/langFallback";
 import { Package, ExternalLink, AlertTriangle, Clock } from "lucide-react";
 
 const content = {
@@ -73,7 +74,7 @@ const priorityColors = ["border-red-500/50 bg-red-500/5", "border-yellow-500/50 
 
 export default function Food() {
   const { lang, t } = useLang();
-  const c = content[lang] || content["en"];
+  const c = getLangContent(content, lang);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
