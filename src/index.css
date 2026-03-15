@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  :root {
+    --background: 20 14% 4%;
+    --foreground: 60 9% 92%;
+    --card: 20 14% 7%;
+    --card-foreground: 60 9% 92%;
+    --popover: 20 14% 7%;
+    --popover-foreground: 60 9% 92%;
+    --primary: 22 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 20 14% 12%;
+    --secondary-foreground: 60 9% 80%;
+    --muted: 20 14% 10%;
+    --muted-foreground: 20 10% 50%;
+    --accent: 0 72% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 14% 16%;
+    --input: 20 14% 12%;
+    --ring: 22 100% 50%;
+    --radius: 0.5rem;
+  }
+}
+@layer base {
+  html { font-size: 18px; }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; font-family: 'Inter', sans-serif; }
+  .font-military { font-family: 'Oswald', sans-serif; }
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary)); }
+@keyframes alertPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.alert-pulse { animation: alertPulse 2s ease-in-out infinite; }
+.scanlines {
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+}
