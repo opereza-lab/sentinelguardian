@@ -36,7 +36,7 @@ function CompassDial({ heading, sunAzimuth, sunAltitude, riseAz, setAz, cardinal
       {Array.from({ length: 36 }).map((_, i) => { const a = i * 10; const inner = i % 9 === 0 ? r - 16 : i % 3 === 0 ? r - 10 : r - 6; const p1 = toXY(a, r); const p2 = toXY(a, inner); return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="hsl(20,14%,28%)" strokeWidth={i % 9 === 0 ? 2 : 1} />; })}
       {[{ az: riseAz, label: "↑☀", color: "#fbbf24" }, { az: setAz, label: "↓☀", color: "#f97316" }].map(({ az, label, color }, i) => { const p = toXY(az, r - 22); return (<g key={i}><circle cx={p.x} cy={p.y} r={5} fill={color} opacity={0.85} /><text x={p.x} y={p.y - 10} textAnchor="middle" fontSize="9" fill={color} fontFamily="sans-serif">{label}</text></g>); })}
       {sunAltitude > -6 && (() => { const p = toXY(sunAzimuth, r - 38); return (<g><circle cx={p.x} cy={p.y} r={9} fill={sunAltitude > 0 ? "#fde047" : "#475569"} opacity={sunAltitude > 0 ? 1 : 0.4} /><text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="10" fill="#000">{sunAltitude > 0 ? "☀" : "☽"}</text></g>); })()}
-      <g transform={`rotate(${dialRotation}, ${cx}, ${cy})`}>
+      <g transform={`rotate(${dialRotation}, ${cx}, ${cy})`} style={{ transition: "transform 0.15s ease-out" }}>
         {cardinals.map(({ label, angle, color }) => { const p = toXY(angle, r - 26); return (<text key={label} x={p.x} y={p.y + 5} textAnchor="middle" fontSize="14" fontWeight="bold" fill={color} fontFamily="sans-serif">{label}</text>); })}
         <polygon points={`${cx},${cy - r + 32} ${cx - 8},${cy + 10} ${cx},${cy - 8} ${cx + 8},${cy + 10}`} fill="#ef4444" />
         <polygon points={`${cx},${cy + r - 32} ${cx - 8},${cy - 10} ${cx},${cy + 8} ${cx + 8},${cy - 10}`} fill="hsl(60,9%,60%)" />
@@ -223,6 +223,9 @@ export default function Compass() {
   const [sunPos, setSunPos] = useState(null);
   const [showMethods, setShowMethods] = useState(false);
   const intervalRef = useRef(null);
+  const rawHeadingRef = useRef(0);
+  const smoothedHeadingRef = useRef(0);
+  const animFrameRef = useRef(null);
 
   useEffect(() => {
     if (coords) {
@@ -246,13 +249,49 @@ export default function Compass() {
       try { const perm = await DeviceOrientationEvent.requestPermission(); if (perm !== "granted") return; } catch { return; }
     }
     if (!window.DeviceOrientationEvent) { setHasOrientation(false); return; }
+
+    const ALPHA = 0.15; // Factor de suavizado: 0.1=muy suave/lento, 0.3=más rápido
+
     const handler = (e) => {
-      if (e.webkitCompassHeading !== undefined) { setHeading(e.webkitCompassHeading); setHasOrientation(true); }
-      else if (e.alpha !== null) { setHeading((360 - e.alpha) % 360); setHasOrientation(true); }
+      let raw = 0;
+      if (e.webkitCompassHeading !== undefined) {
+        raw = e.webkitCompassHeading;
+      } else if (e.alpha !== null) {
+        raw = (360 - e.alpha) % 360;
+      } else return;
+
+      // Guardar valor crudo en ref (no dispara render)
+      rawHeadingRef.current = raw;
+      if (!hasOrientation) setHasOrientation(true);
     };
+
+    // Loop de animación para actualizar el heading suavizado
+    const smoothLoop = () => {
+      const raw = rawHeadingRef.current;
+      let smoothed = smoothedHeadingRef.current;
+
+      // Suavizado circular (evita salto de 359° → 0°)
+      let diff = raw - smoothed;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      smoothed = smoothed + ALPHA * diff;
+      smoothed = ((smoothed % 360) + 360) % 360;
+
+      smoothedHeadingRef.current = smoothed;
+      setHeading(Math.round(smoothed * 10) / 10); // 1 decimal, evita saltos
+      animFrameRef.current = requestAnimationFrame(smoothLoop);
+    };
+
     window.addEventListener("deviceorientationabsolute", handler, true);
     window.addEventListener("deviceorientation", handler, true);
+    animFrameRef.current = requestAnimationFrame(smoothLoop);
     setOrientationEnabled(true);
+
+    return () => {
+      window.removeEventListener("deviceorientationabsolute", handler, true);
+      window.removeEventListener("deviceorientation", handler, true);
+      cancelAnimationFrame(animFrameRef.current);
+    };
   };
 
   const headingLabel = () => {
