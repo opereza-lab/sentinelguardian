@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { useLang } from "../components/LanguageContext";
 import { getLangContent } from "../utils/langFallback";
-import { Flame, AlertTriangle, ChevronDown, ChevronUp, CheckCircle, XCircle, Wind, Droplets } from "lucide-react";
+import { Flame, AlertTriangle, ChevronDown, ChevronUp, CheckCircle, XCircle, Wind, Droplets, ImageIcon, X } from "lucide-react";
+
+const METHOD_IMAGES = {
+  flint: "https://pub-9f02b5de762944eb925bac76d42efae6.r2.dev/PEDERNAL-ESLABON.png",
+  friction: "https://pub-9f02b5de762944eb925bac76d42efae6.r2.dev/FRICCION-ARCO.png",
+};
 
 const content = {
   es: {
@@ -251,9 +256,25 @@ export default function Fire() {
   const { lang } = useLang();
   const c = getLangContent(content, lang);
   const [openId, setOpenId] = useState("lighter");
+  const [imageModal, setImageModal] = useState(null);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+
+      {/* Modal imagen */}
+      {imageModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImageModal(null)}>
+          <div className="bg-card border border-border rounded-xl max-w-lg w-full p-4 relative" onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-3 right-3 text-muted-foreground hover:text-foreground" onClick={() => setImageModal(null)}>
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="font-military text-lg text-primary tracking-wide mb-3">{imageModal.title}</h3>
+            <div className="rounded-lg overflow-hidden bg-white">
+              <img src={imageModal.url} alt={imageModal.title} className="w-full object-contain max-h-96" />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-2">
         <Flame className="w-4 h-4 text-orange-500" />
         <span className="text-orange-500 text-xs font-bold tracking-widest uppercase">{c.tagline}</span>
@@ -272,7 +293,7 @@ export default function Fire() {
           const isOpen = openId === m.id;
           return (
             <div key={m.id} className={`border rounded overflow-hidden ${m.border}`}>
-              <button onClick={() => setOpenId(isOpen ? null : m.id)} className={`w-full flex items-center justify-between p-4 ${m.bg} hover:opacity-90 transition-all`}>
+              <div className="flex items-stretch">
                 <div className="flex items-center gap-4">
                   <span className="text-2xl">{m.emoji}</span>
                   <div className="text-left">
@@ -285,6 +306,15 @@ export default function Fire() {
                 </div>
                 {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
               </button>
+              {METHOD_IMAGES[m.id] && (
+                <button
+                  className="flex items-center gap-1.5 px-4 py-4 text-xs font-medium text-primary hover:text-primary/80 hover:bg-secondary/40 transition-colors border-l border-border flex-shrink-0"
+                  onClick={() => setImageModal({ title: m.title, url: METHOD_IMAGES[m.id] })}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{lang === "es" ? "Ver imagen" : lang === "fr" ? "Voir image" : lang === "pt" ? "Ver imagem" : lang === "it" ? "Vedi immagine" : lang === "ar" ? "عرض الصورة" : lang === "zh" ? "查看图片" : "View image"}</span>
+                </button>
+              )}
               {isOpen && (
                 <div className="p-5 bg-card border-t border-border space-y-4">
                   <ol className="space-y-2">
@@ -299,6 +329,7 @@ export default function Fire() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           );
         })}
