@@ -334,7 +334,6 @@ export default function Fire() {
                   </div>
                 </div>
               )}
-              </div>
             </div>
           );
         })}
