@@ -1,36 +1,60 @@
 import React, { useState, useRef, useEffect } from "react";
 
-const HOLD_DURATION = 3000;
 const PULSE_DURATION = 2000;
 const LOW_BATTERY_THRESHOLD = 20;
 const LOW_BATTERY_BEEP_INTERVAL = 15000;
 
-function createBeep(audioCtxRef) {
+// ─── Pitido usando oscilador Web Audio ────────────────────────────────────────
+// No requiere permisos del usuario — Web Audio API es libre de usar
+function beep(audioCtxRef) {
   try {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = audioCtxRef.current;
+    // Reanudar si está suspendido (política autoplay de navegadores)
     if (ctx.state === "suspended") ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = "sine";
-    osc.frequency.value = 1200;
+    osc.frequency.value = 1400; // alta frecuencia, penetrante
     gain.gain.setValueAtTime(0.001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(1.0, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    gain.gain.exponentialRampToValueAtTime(1.5, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.2);
+    osc.stop(ctx.currentTime + 0.25);
   } catch (e) {}
 }
 
-async function getFlashlightTrack() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    return stream.getVideoTracks()[0];
-  } catch { return null; }
+// ─── Linterna — compatible Android / iOS / otros ──────────────────────────────
+async function requestFlashTrack() {
+  const constraints = [
+    { video: { facingMode: { exact: "environment" } } },
+    { video: { facingMode: "environment" } },
+    { video: true },
+  ];
+  for (const c of constraints) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(c);
+      const track = stream.getVideoTracks()[0];
+      if (track) return track;
+    } catch {}
+  }
+  return null;
+}
+
+async function setTorch(track, value) {
+  // Intentar con diferentes métodos según el SO
+  const methods = [
+    () => track.applyConstraints({ advanced: [{ torch: value }] }),
+    () => track.applyConstraints({ torch: value }),
+  ];
+  for (const m of methods) {
+    try { await m(); return true; } catch {}
+  }
+  return false;
 }
 
 export default function SOSSwipePanel({ visible, onClose }) {
@@ -41,8 +65,8 @@ export default function SOSSwipePanel({ visible, onClose }) {
   const [flashOn, setFlashOn] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [flashSupported, setFlashSupported] = useState(true);
+  const [flashError, setFlashError] = useState(null);
 
-  const holdTimer = useRef(null);
   const countdownInterval = useRef(null);
   const warningTimer = useRef(null);
   const audioCtxRef = useRef(null);
@@ -51,78 +75,97 @@ export default function SOSSwipePanel({ visible, onClose }) {
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
 
+  // ── Batería ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if ("getBattery" in navigator) {
-      navigator.getBattery().then((battery) => {
-        setBatteryLevel(Math.round(battery.level * 100));
-        battery.addEventListener("levelchange", () => {
-          setBatteryLevel(Math.round(battery.level * 100));
-        });
+      navigator.getBattery().then((b) => {
+        setBatteryLevel(Math.round(b.level * 100));
+        b.addEventListener("levelchange", () => setBatteryLevel(Math.round(b.level * 100)));
       });
     }
   }, []);
 
   const isLowBattery = batteryLevel <= LOW_BATTERY_THRESHOLD;
 
+  // ── Pitido sincronizado con pulse ─────────────────────────────────────────
   useEffect(() => {
-    if (!sosActive) {
-      clearInterval(beepInterval.current);
-      return;
+    clearInterval(beepInterval.current);
+    if (!sosActive) return;
+
+    // Inicializar AudioContext con interacción del usuario (ya ocurrió al presionar SOS)
+    if (!audioCtxRef.current) {
+      try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
     }
+    if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
+
     if (isLowBattery) {
-      createBeep(audioCtxRef);
-      beepInterval.current = setInterval(() => createBeep(audioCtxRef), LOW_BATTERY_BEEP_INTERVAL);
+      beep(audioCtxRef);
+      beepInterval.current = setInterval(() => beep(audioCtxRef), LOW_BATTERY_BEEP_INTERVAL);
     } else {
+      // Sincronizar con el pico del pulse (50% del ciclo)
       const delay = PULSE_DURATION * 0.5;
       const t = setTimeout(() => {
-        createBeep(audioCtxRef);
-        beepInterval.current = setInterval(() => createBeep(audioCtxRef), PULSE_DURATION);
+        beep(audioCtxRef);
+        beepInterval.current = setInterval(() => beep(audioCtxRef), PULSE_DURATION);
       }, delay);
       return () => { clearTimeout(t); clearInterval(beepInterval.current); };
     }
     return () => clearInterval(beepInterval.current);
   }, [sosActive, isLowBattery]);
 
+  // ── Linterna ──────────────────────────────────────────────────────────────
   const toggleFlash = async () => {
+    setFlashError(null);
     if (!flashOn) {
       if (!flashTrackRef.current) {
-        const track = await getFlashlightTrack();
-        if (!track) { setFlashSupported(false); return; }
+        const track = await requestFlashTrack();
+        if (!track) {
+          setFlashSupported(false);
+          setFlashError("Linterna no disponible en este dispositivo");
+          return;
+        }
         flashTrackRef.current = track;
       }
-      try {
-        await flashTrackRef.current.applyConstraints({ advanced: [{ torch: true }] });
-        setFlashOn(true);
-      } catch { setFlashSupported(false); }
+      const ok = await setTorch(flashTrackRef.current, true);
+      if (ok) { setFlashOn(true); }
+      else {
+        setFlashSupported(false);
+        setFlashError("Este dispositivo no soporta control de linterna");
+      }
     } else {
-      try {
-        await flashTrackRef.current.applyConstraints({ advanced: [{ torch: false }] });
-        setFlashOn(false);
-      } catch {}
+      await setTorch(flashTrackRef.current, false);
+      setFlashOn(false);
     }
   };
 
   useEffect(() => {
     return () => {
       if (flashTrackRef.current) {
-        flashTrackRef.current.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+        setTorch(flashTrackRef.current, false).catch(() => {});
         flashTrackRef.current.stop();
       }
     };
   }, []);
 
+  // ── Hold SOS ──────────────────────────────────────────────────────────────
   const clearTimers = () => {
-    clearTimeout(holdTimer.current);
     clearInterval(countdownInterval.current);
     clearTimeout(warningTimer.current);
   };
 
   const startHold = () => {
     if (countdown !== null) return;
+    // Inicializar AudioContext en gesto del usuario
+    if (!audioCtxRef.current) {
+      try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+    }
+    if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
+
     setHolding(true);
     warningTimer.current = setTimeout(() => {
       if (!sosActive) setShowWarning(true);
     }, 1000);
+
     let count = 3;
     setCountdown(count);
     countdownInterval.current = setInterval(() => {
@@ -131,8 +174,8 @@ export default function SOSSwipePanel({ visible, onClose }) {
         setCountdown(count);
       } else {
         clearInterval(countdownInterval.current);
-        const finalLabel = !sosActive ? "ACTIVO" : "DESACTIVADO";
-        setCountdown(finalLabel);
+        const label = !sosActive ? "ACTIVO" : "DESACTIVADO";
+        setCountdown(label);
         setTimeout(() => {
           setSosActive(prev => !prev);
           setShowWarning(false);
@@ -150,11 +193,11 @@ export default function SOSSwipePanel({ visible, onClose }) {
     setShowWarning(false);
   };
 
+  // ── Swipe cierra en ambas direcciones ─────────────────────────────────────
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   };
-
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
@@ -164,10 +207,14 @@ export default function SOSSwipePanel({ visible, onClose }) {
   };
 
   const isActive = sosActive;
-  const pulseColor = isActive ? "rgba(34,197,94,0.8)" : "rgba(220,38,38,0.75)";
+  const pulseColor = isActive ? "rgba(34,197,94,0.85)" : "rgba(220,38,38,0.8)";
   const btnBg = isActive ? "#16a34a" : "#dc2626";
   const btnBorder = isActive ? "#22c55e" : "#ef4444";
   const pulseDur = `${PULSE_DURATION}ms`;
+
+  // Tamaños — SOS 186px (+20%), linterna 96px (+20%)
+  const sosSize = 186;
+  const flashSize = 96;
 
   return (
     <>
@@ -181,45 +228,50 @@ export default function SOSSwipePanel({ visible, onClose }) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* HEADER — instrucciones siempre visibles */}
-        <div className="px-5 pt-5 pb-3 border-b border-zinc-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-zinc-500 tracking-widest uppercase">SentinelGuardian SOS</span>
-            <button onClick={onClose} className="text-zinc-500 hover:text-white text-xl leading-none">✕</button>
+        {/* ── HEADER — instrucciones grandes, siempre visibles ── */}
+        <div className="px-5 pt-5 pb-4 border-b border-zinc-800">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-bold text-zinc-300 tracking-widest uppercase">SentinelGuardian SOS</span>
+            <button onClick={onClose} className="text-zinc-400 hover:text-white text-2xl leading-none w-9 h-9 flex items-center justify-center">✕</button>
           </div>
-          <div className="bg-zinc-900 rounded-lg px-3 py-2 text-[11px] text-zinc-400 space-y-0.5">
-            <p>• <b className="text-white">Activar:</b> mantén el botón SOS 3 seg → <span className="text-green-400">ACTIVO</span></p>
-            <p>• <b className="text-white">Desactivar:</b> mismo procedimiento → <span className="text-red-400">DESACTIVADO</span></p>
-            <p>• Suelta antes de 3 seg para cancelar</p>
+          <div className="bg-zinc-900 rounded-xl px-4 py-3 space-y-1.5">
+            <p className="text-base font-bold text-white">📋 Instrucciones</p>
+            <p className="text-sm text-zinc-300">• <b className="text-white">Activar:</b> mantén el botón SOS 3 seg → <span className="text-green-400 font-bold">ACTIVO</span></p>
+            <p className="text-sm text-zinc-300">• <b className="text-white">Desactivar:</b> mismo procedimiento → <span className="text-red-400 font-bold">DESACTIVADO</span></p>
+            <p className="text-sm text-zinc-400">• Suelta antes de 3 seg para cancelar</p>
             {isLowBattery && (
-              <p className="text-yellow-400 font-bold mt-1">⚡ Batería baja ({batteryLevel}%) — pitido reducido a 1/15 seg</p>
+              <p className="text-sm text-yellow-400 font-bold">⚡ Batería baja ({batteryLevel}%) — pitido reducido</p>
             )}
           </div>
         </div>
 
-        {/* CUERPO CENTRAL */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 relative">
+        {/* ── CUERPO ── */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 relative">
 
           {/* Status */}
-          <div className={`text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full border ${isActive ? "bg-green-900/60 text-green-300 border-green-700" : "bg-red-900/40 text-red-300 border-red-800"}`}>
+          <div className={`text-sm font-black uppercase tracking-widest px-5 py-2 rounded-full border-2 ${isActive ? "bg-green-900/60 text-green-300 border-green-700" : "bg-red-900/40 text-red-300 border-red-800"}`}>
             {isActive ? "● SOS ACTIVO" : "○ SOS INACTIVO"}
           </div>
 
-          {/* Advertencia — sobre el botón, aparece después de 1 segundo */}
+          {/* Advertencia — grande, bien arriba del botón */}
           {showWarning && !isActive && (
-            <div className="w-full max-w-xs bg-red-950 border border-red-700 rounded-xl p-3 text-xs text-red-200 text-center shadow-xl">
-              ⚠️ <b>ADVERTENCIA:</b> Al activar el SOS, tu ubicación GPS será enviada a los equipos de emergencia y contactos de tu <b>Perfil SOS</b>.
+            <div className="w-full max-w-xs bg-red-950 border-2 border-red-600 rounded-2xl px-4 py-3 text-center shadow-2xl">
+              <p className="text-base font-black text-red-300 mb-1">⚠️ ADVERTENCIA</p>
+              <p className="text-sm text-red-200 leading-snug">Al activar el SOS, tu ubicación GPS será enviada a los equipos de emergencia y contactos de tu <b>Perfil SOS</b>.</p>
             </div>
           )}
 
-          {/* Botón SOS */}
+          {/* ── Botón SOS ── */}
           <div className="relative flex items-center justify-center">
             {(isActive || holding) && (<>
-              <span className="absolute rounded-full" style={{ width: 230, height: 230, background: pulseColor, opacity: 0.12, animation: `sosPulse ${pulseDur} ease-in-out infinite` }} />
-              <span className="absolute rounded-full" style={{ width: 190, height: 190, background: pulseColor, opacity: 0.20, animation: `sosPulse ${pulseDur} ease-in-out infinite`, animationDelay: `${PULSE_DURATION * 0.3}ms` }} />
+              <span className="absolute rounded-full"
+                style={{ width: sosSize + 80, height: sosSize + 80, background: pulseColor, opacity: 0.12, animation: `sosPulse ${pulseDur} ease-in-out infinite` }} />
+              <span className="absolute rounded-full"
+                style={{ width: sosSize + 40, height: sosSize + 40, background: pulseColor, opacity: 0.20, animation: `sosPulse ${pulseDur} ease-in-out infinite`, animationDelay: `${PULSE_DURATION * 0.3}ms` }} />
             </>)}
             {!isActive && !holding && (
-              <span className="absolute rounded-full" style={{ width: 190, height: 190, boxShadow: `0 0 32px 12px ${pulseColor}`, animation: `sosPulse ${pulseDur} ease-in-out infinite` }} />
+              <span className="absolute rounded-full"
+                style={{ width: sosSize + 40, height: sosSize + 40, boxShadow: `0 0 36px 14px ${pulseColor}`, animation: `sosPulse ${pulseDur} ease-in-out infinite` }} />
             )}
             <button
               onMouseDown={startHold}
@@ -229,12 +281,11 @@ export default function SOSSwipePanel({ visible, onClose }) {
               onTouchEnd={cancelHold}
               className="relative rounded-full flex items-center justify-center font-black text-white select-none"
               style={{
-                width: 155,
-                height: 155,
+                width: sosSize, height: sosSize,
                 background: btnBg,
-                border: `5px solid ${btnBorder}`,
-                boxShadow: `0 0 44px 16px ${pulseColor}`,
-                fontSize: countdown !== null ? 36 : 44,
+                border: `6px solid ${btnBorder}`,
+                boxShadow: `0 0 48px 18px ${pulseColor}`,
+                fontSize: countdown !== null ? 42 : 52,
                 transition: "background 0.4s, box-shadow 0.4s",
                 cursor: "pointer",
                 WebkitUserSelect: "none",
@@ -246,75 +297,87 @@ export default function SOSSwipePanel({ visible, onClose }) {
             </button>
           </div>
 
-          {/* Instrucción hold */}
-          <p className="text-xs text-zinc-400 text-center leading-relaxed">
+          <p className="text-sm text-zinc-400 text-center">
             {holding ? "Suelta para cancelar..." : isActive ? "Mantén 3 seg para DESACTIVAR" : "Mantén 3 seg para ACTIVAR"}
           </p>
 
-          {/* Separador */}
+          {/* ── Separador ── */}
           <div className="w-full h-px bg-zinc-800" />
 
-          {/* Botón Linterna */}
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Linterna</p>
+          {/* ── Botón Linterna — más abajo, más grande ── */}
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <p className="text-sm text-zinc-400 uppercase tracking-widest font-bold">Linterna</p>
             <div className="relative flex items-center justify-center">
+              {/* Halo linterna — blanco brillante cuando ON */}
               {flashOn && (
-                <span className="absolute rounded-full" style={{
-                  width: 110, height: 110,
-                  boxShadow: "0 0 26px 10px rgba(255, 210, 60, 0.45)",
-                  animation: "flashPulse 1.8s ease-in-out infinite",
-                }} />
+                <span className="absolute rounded-full"
+                  style={{
+                    width: flashSize + 40, height: flashSize + 40,
+                    boxShadow: "0 0 32px 14px rgba(240, 240, 255, 0.65)",
+                    animation: "flashPulse 1.8s ease-in-out infinite",
+                  }} />
               )}
               <button
                 onClick={toggleFlash}
-                disabled={!flashSupported}
                 className="relative rounded-full flex items-center justify-center select-none"
                 style={{
-                  width: 80, height: 80,
+                  width: flashSize, height: flashSize,
                   background: flashOn
-                    ? "radial-gradient(circle at 35% 35%, #c0a060, #6b5520, #3a2e10)"
-                    : "radial-gradient(circle at 35% 35%, #6b6b6b, #2a2a2a, #111)",
-                  border: flashOn ? "3px solid #d4a820" : "3px solid #444",
+                    ? "radial-gradient(circle at 35% 30%, #e0e0e0, #909090, #404040)"
+                    : "radial-gradient(circle at 35% 30%, #787878, #303030, #111)",
+                  border: flashOn ? "3px solid #d0d0d0" : "3px solid #505050",
                   boxShadow: flashOn
-                    ? "0 0 22px 8px rgba(255,200,40,0.35), inset 0 2px 4px rgba(255,255,200,0.15)"
-                    : "0 4px 12px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.05)",
-                  cursor: flashSupported ? "pointer" : "not-allowed",
-                  opacity: flashSupported ? 1 : 0.4,
+                    ? "0 0 24px 8px rgba(220,220,255,0.4), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.4)"
+                    : "0 6px 16px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.06), inset 0 -2px 4px rgba(0,0,0,0.5)",
+                  cursor: "pointer",
                   transition: "all 0.3s",
                 }}
               >
-                <svg width="34" height="34" viewBox="0 0 36 36" fill="none">
-                  <path d="M14 6h8l3 10H11L14 6z" fill={flashOn ? "#ffe080" : "#888"} stroke={flashOn ? "#d4a820" : "#555"} strokeWidth="1.2"/>
-                  <rect x="12" y="16" width="12" height="14" rx="2" fill={flashOn ? "#c89020" : "#555"} stroke={flashOn ? "#d4a820" : "#444"} strokeWidth="1.2"/>
-                  <circle cx="18" cy="21" r="3" fill={flashOn ? "#ffe090" : "#333"} stroke={flashOn ? "#ffd040" : "#555"} strokeWidth="1"/>
+                <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                  {/* Cuerpo linterna */}
+                  <rect x="16" y="20" width="12" height="18" rx="2.5"
+                    fill={flashOn ? "#b0b0b0" : "#505050"}
+                    stroke={flashOn ? "#d8d8d8" : "#404040"} strokeWidth="1.2"/>
+                  {/* Cabeza linterna */}
+                  <path d="M13 10h18l3 10H10L13 10z"
+                    fill={flashOn ? "#c8c8c8" : "#606060"}
+                    stroke={flashOn ? "#e0e0e0" : "#484848"} strokeWidth="1.2"/>
+                  {/* Lente */}
+                  <ellipse cx="22" cy="20" rx="5" ry="3"
+                    fill={flashOn ? "#f0f0ff" : "#282828"}
+                    stroke={flashOn ? "#ffffff" : "#404040"} strokeWidth="1"/>
+                  {/* Rayos de luz cuando ON */}
                   {flashOn && (<>
-                    <line x1="18" y1="4" x2="18" y2="1" stroke="#ffe080" strokeWidth="1.5" strokeLinecap="round"/>
-                    <line x1="11" y1="6" x2="8.5" y2="3.5" stroke="#ffe080" strokeWidth="1.5" strokeLinecap="round"/>
-                    <line x1="25" y1="6" x2="27.5" y2="3.5" stroke="#ffe080" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="22" y1="6" x2="22" y2="2" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="14" y1="8" x2="11" y2="5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="30" y1="8" x2="33" y2="5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="10" y1="14" x2="6" y2="13" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="34" y1="14" x2="38" y2="13" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
                   </>)}
                 </svg>
               </button>
             </div>
-            <span className={`text-[11px] font-bold tracking-widest uppercase ${flashOn ? "text-yellow-400" : "text-zinc-500"}`}>
-              {!flashSupported ? "No disponible" : flashOn ? "ON" : "OFF"}
+            <span className={`text-sm font-black tracking-widest uppercase ${flashOn ? "text-white" : "text-zinc-500"}`}>
+              {flashOn ? "● ON" : "○ OFF"}
             </span>
+            {flashError && <p className="text-xs text-red-400 text-center px-4">{flashError}</p>}
           </div>
         </div>
 
-        {/* FOOTER */}
+        {/* ── FOOTER ── */}
         <div className="px-5 pb-5 pt-3 border-t border-zinc-800 text-center">
-          <p className="text-[10px] text-zinc-600">← → desliza para cerrar</p>
+          <p className="text-sm text-zinc-600">← → desliza para cerrar</p>
         </div>
       </div>
 
       <style>{`
         @keyframes sosPulse {
-          0%, 100% { opacity: 0.45; transform: scale(0.94); }
-          50% { opacity: 1; transform: scale(1.13); }
+          0%, 100% { opacity: 0.4; transform: scale(0.93); }
+          50% { opacity: 1; transform: scale(1.14); }
         }
         @keyframes flashPulse {
-          0%, 100% { opacity: 0.55; transform: scale(0.96); }
-          50% { opacity: 1; transform: scale(1.09); }
+          0%, 100% { opacity: 0.5; transform: scale(0.95); }
+          50% { opacity: 1; transform: scale(1.1); }
         }
       `}</style>
     </>
