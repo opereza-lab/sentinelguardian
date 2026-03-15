@@ -7,6 +7,7 @@ import FirstAid from "./pages/FirstAid.jsx";
 import Food from "./pages/Food.jsx";
 import GoBackpack from "./pages/GoBackpack.jsx";
 import Home from "./pages/Home.jsx";
+import OfflineMaps from "./pages/OfflineMaps.jsx";
 import RescueDashboard from "./pages/RescueDashboard.jsx";
 import Shelters from "./pages/Shelters.jsx";
 import SurvivalKnots from "./pages/SurvivalKnots.jsx";
@@ -27,6 +28,7 @@ export const pagesConfig = {
     GoBackpack,
     Compass,
     Fire,
+    OfflineMaps,
     EmergencyProfile,
     RescueDashboard,
     DeveloperPanel,
