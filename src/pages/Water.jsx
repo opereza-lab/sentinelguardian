@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useLang } from "../components/LanguageContext";
 import { getLangContent } from "../utils/langFallback";
-import { Droplets, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
+import { Droplets, AlertTriangle, CheckCircle, ExternalLink, ImageIcon, X } from "lucide-react";
+
+const SOLAR_IMAGE = "https://pub-9f02b5de762944eb925bac76d42efae6.r2.dev/destilacion-solar.png";
 
 const content = {
   es: {
@@ -112,11 +114,28 @@ export default function Water() {
   const { lang, t } = useLang();
   const c = getLangContent(content, lang);
   const [openIdx, setOpenIdx] = useState(0);
+  const [imageModal, setImageModal] = useState(null);
+  const viewImageLabel = lang === "es" ? "Ver imagen" : lang === "fr" ? "Voir image" : lang === "pt" ? "Ver imagem" : lang === "it" ? "Vedi immagine" : lang === "ar" ? "عرض الصورة" : lang === "zh" ? "查看图片" : "View image";
 
   const shopQuery = lang === "es" ? "pastillas+potabilizadoras+agua+emergencia" : "water+purification+tablets+emergency";
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+
+      {/* Modal imagen */}
+      {imageModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImageModal(null)}>
+          <div className="bg-card border border-border rounded-xl max-w-lg w-full p-4 relative" onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-3 right-3 text-muted-foreground hover:text-foreground" onClick={() => setImageModal(null)}>
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="font-military text-lg text-primary tracking-wide mb-3">{imageModal.title}</h3>
+            <div className="rounded-lg overflow-hidden bg-white">
+              <img src={imageModal.url} alt={imageModal.title} className="w-full object-contain max-h-96" />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-2">
         <Droplets className="w-4 h-4 text-blue-400" />
         <span className="text-blue-400 text-xs font-bold tracking-widest uppercase">
@@ -140,22 +159,33 @@ export default function Water() {
           const isOpen = openIdx === idx;
           return (
             <div key={idx} className="border border-border rounded overflow-hidden">
-              <button
-                onClick={() => setOpenIdx(isOpen ? null : idx)}
-                className="w-full flex items-center justify-between p-4 bg-card hover:bg-secondary transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <Droplets className={`w-5 h-5 ${m.color}`} />
-                  <div className="text-left">
-                    <div className="font-military text-sm text-foreground tracking-wide">{m.title}</div>
-                    <div className="flex gap-3 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground">{lang === "es" ? "Tiempo:" : "Time:"} <span className="text-primary">{m.time}</span></span>
-                      <span className="text-[10px] text-muted-foreground">{lang === "es" ? "Dificultad:" : "Difficulty:"} <span className={m.color}>{m.difficulty}</span></span>
+              <div className="flex items-center">
+                <button
+                  onClick={() => setOpenIdx(isOpen ? null : idx)}
+                  className="flex-1 flex items-center justify-between p-4 bg-card hover:bg-secondary transition-all text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <Droplets className={`w-5 h-5 ${m.color}`} />
+                    <div className="text-left">
+                      <div className="font-military text-sm text-foreground tracking-wide">{m.title}</div>
+                      <div className="flex gap-3 mt-0.5">
+                        <span className="text-[10px] text-muted-foreground">{lang === "es" ? "Tiempo:" : "Time:"} <span className="text-primary">{m.time}</span></span>
+                        <span className="text-[10px] text-muted-foreground">{lang === "es" ? "Dificultad:" : "Difficulty:"} <span className={m.color}>{m.difficulty}</span></span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                {isOpen ? <CheckCircle className="w-4 h-4 text-green-400" /> : <span className="text-muted-foreground text-xs">+</span>}
-              </button>
+                  {isOpen ? <CheckCircle className="w-4 h-4 text-green-400" /> : <span className="text-muted-foreground text-xs">+</span>}
+                </button>
+                {m.title.toLowerCase().includes("solar") && (
+                  <button
+                    className="flex items-center gap-1.5 px-4 py-4 text-xs font-medium text-primary hover:text-primary/80 hover:bg-secondary/40 transition-colors border-l border-border flex-shrink-0"
+                    onClick={() => setImageModal({ title: m.title, url: SOLAR_IMAGE })}
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{viewImageLabel}</span>
+                  </button>
+                )}
+              </div>
 
               {isOpen && (
                 <div className="p-5 border-t border-border bg-background/50 space-y-4">
