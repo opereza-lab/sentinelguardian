@@ -46,7 +46,7 @@ function NavContent({ mobile = false, onClose, userRole, isAdmin }) {
           <Globe className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-xs text-muted-foreground uppercase tracking-wide">Idioma / Language</span>
         </div>
-        <div className="grid grid-cols-2 gap-1">
+        <div className="flex flex-wrap gap-1">
           {[
             { code: "es", label: "Español" },
             { code: "en", label: "English" },
