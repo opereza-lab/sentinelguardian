@@ -4,22 +4,19 @@ const PULSE_DURATION = 2000;
 const LOW_BATTERY_THRESHOLD = 20;
 const LOW_BATTERY_BEEP_INTERVAL = 15000;
 
-// ─── Pitido usando oscilador Web Audio ────────────────────────────────────────
-// No requiere permisos del usuario — Web Audio API es libre de usar
 function beep(audioCtxRef) {
   try {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     const ctx = audioCtxRef.current;
-    // Reanudar si está suspendido (política autoplay de navegadores)
     if (ctx.state === "suspended") ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = "sine";
-    osc.frequency.value = 1400; // alta frecuencia, penetrante
+    osc.frequency.value = 1400;
     gain.gain.setValueAtTime(0.001, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(1.5, ctx.currentTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
@@ -28,54 +25,20 @@ function beep(audioCtxRef) {
   } catch (e) {}
 }
 
-// ─── Linterna — compatible Android / iOS / otros ──────────────────────────────
-async function requestFlashTrack() {
-  const constraints = [
-    { video: { facingMode: { exact: "environment" } } },
-    { video: { facingMode: "environment" } },
-    { video: true },
-  ];
-  for (const c of constraints) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(c);
-      const track = stream.getVideoTracks()[0];
-      if (track) return track;
-    } catch {}
-  }
-  return null;
-}
-
-async function setTorch(track, value) {
-  // Intentar con diferentes métodos según el SO
-  const methods = [
-    () => track.applyConstraints({ advanced: [{ torch: value }] }),
-    () => track.applyConstraints({ torch: value }),
-  ];
-  for (const m of methods) {
-    try { await m(); return true; } catch {}
-  }
-  return false;
-}
-
 export default function SOSSwipePanel({ visible, onClose }) {
   const [sosActive, setSosActive] = useState(false);
   const [holding, setHolding] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [showWarning, setShowWarning] = useState(false);
-  const [flashOn, setFlashOn] = useState(false);
   const [batteryLevel, setBatteryLevel] = useState(100);
-  const [flashSupported, setFlashSupported] = useState(true);
-  const [flashError, setFlashError] = useState(null);
 
   const countdownInterval = useRef(null);
   const warningTimer = useRef(null);
   const audioCtxRef = useRef(null);
   const beepInterval = useRef(null);
-  const flashTrackRef = useRef(null);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
 
-  // ── Batería ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if ("getBattery" in navigator) {
       navigator.getBattery().then((b) => {
@@ -87,67 +50,26 @@ export default function SOSSwipePanel({ visible, onClose }) {
 
   const isLowBattery = batteryLevel <= LOW_BATTERY_THRESHOLD;
 
-  // ── Pitido sincronizado con pulse ─────────────────────────────────────────
   useEffect(() => {
     clearInterval(beepInterval.current);
     if (!sosActive) return;
-
-    // Inicializar AudioContext con interacción del usuario (ya ocurrió al presionar SOS)
     if (!audioCtxRef.current) {
       try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
     }
     if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
-
     if (isLowBattery) {
       beep(audioCtxRef);
       beepInterval.current = setInterval(() => beep(audioCtxRef), LOW_BATTERY_BEEP_INTERVAL);
     } else {
-      // Sincronizar con el pico del pulse (50% del ciclo)
-      const delay = PULSE_DURATION * 0.5;
       const t = setTimeout(() => {
         beep(audioCtxRef);
         beepInterval.current = setInterval(() => beep(audioCtxRef), PULSE_DURATION);
-      }, delay);
+      }, PULSE_DURATION * 0.5);
       return () => { clearTimeout(t); clearInterval(beepInterval.current); };
     }
     return () => clearInterval(beepInterval.current);
   }, [sosActive, isLowBattery]);
 
-  // ── Linterna ──────────────────────────────────────────────────────────────
-  const toggleFlash = async () => {
-    setFlashError(null);
-    if (!flashOn) {
-      if (!flashTrackRef.current) {
-        const track = await requestFlashTrack();
-        if (!track) {
-          setFlashSupported(false);
-          setFlashError("Linterna no disponible en este dispositivo");
-          return;
-        }
-        flashTrackRef.current = track;
-      }
-      const ok = await setTorch(flashTrackRef.current, true);
-      if (ok) { setFlashOn(true); }
-      else {
-        setFlashSupported(false);
-        setFlashError("Este dispositivo no soporta control de linterna");
-      }
-    } else {
-      await setTorch(flashTrackRef.current, false);
-      setFlashOn(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (flashTrackRef.current) {
-        setTorch(flashTrackRef.current, false).catch(() => {});
-        flashTrackRef.current.stop();
-      }
-    };
-  }, []);
-
-  // ── Hold SOS ──────────────────────────────────────────────────────────────
   const clearTimers = () => {
     clearInterval(countdownInterval.current);
     clearTimeout(warningTimer.current);
@@ -155,17 +77,14 @@ export default function SOSSwipePanel({ visible, onClose }) {
 
   const startHold = () => {
     if (countdown !== null) return;
-    // Inicializar AudioContext en gesto del usuario
     if (!audioCtxRef.current) {
       try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
     }
     if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
-
     setHolding(true);
     warningTimer.current = setTimeout(() => {
       if (!sosActive) setShowWarning(true);
     }, 1000);
-
     let count = 3;
     setCountdown(count);
     countdownInterval.current = setInterval(() => {
@@ -174,8 +93,7 @@ export default function SOSSwipePanel({ visible, onClose }) {
         setCountdown(count);
       } else {
         clearInterval(countdownInterval.current);
-        const label = !sosActive ? "ACTIVO" : "DESACTIVADO";
-        setCountdown(label);
+        setCountdown(!sosActive ? "ACTIVO" : "DESACTIVADO");
         setTimeout(() => {
           setSosActive(prev => !prev);
           setShowWarning(false);
@@ -193,7 +111,6 @@ export default function SOSSwipePanel({ visible, onClose }) {
     setShowWarning(false);
   };
 
-  // ── Swipe cierra en ambas direcciones ─────────────────────────────────────
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -211,10 +128,7 @@ export default function SOSSwipePanel({ visible, onClose }) {
   const btnBg = isActive ? "#16a34a" : "#dc2626";
   const btnBorder = isActive ? "#22c55e" : "#ef4444";
   const pulseDur = `${PULSE_DURATION}ms`;
-
-  // Tamaños — SOS 186px (+20%), linterna 96px (+20%)
   const sosSize = 186;
-  const flashSize = 96;
 
   return (
     <>
@@ -228,7 +142,7 @@ export default function SOSSwipePanel({ visible, onClose }) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* ── HEADER — instrucciones grandes, siempre visibles ── */}
+        {/* HEADER */}
         <div className="px-5 pt-5 pb-4 border-b border-zinc-800">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-bold text-zinc-300 tracking-widest uppercase">SentinelGuardian SOS</span>
@@ -245,15 +159,15 @@ export default function SOSSwipePanel({ visible, onClose }) {
           </div>
         </div>
 
-        {/* ── CUERPO ── */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 relative">
+        {/* CUERPO */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
 
           {/* Status */}
           <div className={`text-sm font-black uppercase tracking-widest px-5 py-2 rounded-full border-2 ${isActive ? "bg-green-900/60 text-green-300 border-green-700" : "bg-red-900/40 text-red-300 border-red-800"}`}>
             {isActive ? "● SOS ACTIVO" : "○ SOS INACTIVO"}
           </div>
 
-          {/* Advertencia — grande, bien arriba del botón */}
+          {/* Advertencia — grande, arriba del botón */}
           {showWarning && !isActive && (
             <div className="w-full max-w-xs bg-red-950 border-2 border-red-600 rounded-2xl px-4 py-3 text-center shadow-2xl">
               <p className="text-base font-black text-red-300 mb-1">⚠️ ADVERTENCIA</p>
@@ -261,7 +175,7 @@ export default function SOSSwipePanel({ visible, onClose }) {
             </div>
           )}
 
-          {/* ── Botón SOS ── */}
+          {/* Botón SOS */}
           <div className="relative flex items-center justify-center">
             {(isActive || holding) && (<>
               <span className="absolute rounded-full"
@@ -300,71 +214,9 @@ export default function SOSSwipePanel({ visible, onClose }) {
           <p className="text-sm text-zinc-400 text-center">
             {holding ? "Suelta para cancelar..." : isActive ? "Mantén 3 seg para DESACTIVAR" : "Mantén 3 seg para ACTIVAR"}
           </p>
-
-          {/* ── Separador ── */}
-          <div className="w-full h-px bg-zinc-800" />
-
-          {/* ── Botón Linterna — más abajo, más grande ── */}
-          <div className="flex flex-col items-center gap-2 mt-2">
-            <p className="text-sm text-zinc-400 uppercase tracking-widest font-bold">Linterna</p>
-            <div className="relative flex items-center justify-center">
-              {/* Halo linterna — blanco brillante cuando ON */}
-              {flashOn && (
-                <span className="absolute rounded-full"
-                  style={{
-                    width: flashSize + 40, height: flashSize + 40,
-                    boxShadow: "0 0 32px 14px rgba(240, 240, 255, 0.65)",
-                    animation: "flashPulse 1.8s ease-in-out infinite",
-                  }} />
-              )}
-              <button
-                onClick={toggleFlash}
-                className="relative rounded-full flex items-center justify-center select-none"
-                style={{
-                  width: flashSize, height: flashSize,
-                  background: flashOn
-                    ? "radial-gradient(circle at 35% 30%, #e0e0e0, #909090, #404040)"
-                    : "radial-gradient(circle at 35% 30%, #787878, #303030, #111)",
-                  border: flashOn ? "3px solid #d0d0d0" : "3px solid #505050",
-                  boxShadow: flashOn
-                    ? "0 0 24px 8px rgba(220,220,255,0.4), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.4)"
-                    : "0 6px 16px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.06), inset 0 -2px 4px rgba(0,0,0,0.5)",
-                  cursor: "pointer",
-                  transition: "all 0.3s",
-                }}
-              >
-                <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                  {/* Cuerpo linterna */}
-                  <rect x="16" y="20" width="12" height="18" rx="2.5"
-                    fill={flashOn ? "#b0b0b0" : "#505050"}
-                    stroke={flashOn ? "#d8d8d8" : "#404040"} strokeWidth="1.2"/>
-                  {/* Cabeza linterna */}
-                  <path d="M13 10h18l3 10H10L13 10z"
-                    fill={flashOn ? "#c8c8c8" : "#606060"}
-                    stroke={flashOn ? "#e0e0e0" : "#484848"} strokeWidth="1.2"/>
-                  {/* Lente */}
-                  <ellipse cx="22" cy="20" rx="5" ry="3"
-                    fill={flashOn ? "#f0f0ff" : "#282828"}
-                    stroke={flashOn ? "#ffffff" : "#404040"} strokeWidth="1"/>
-                  {/* Rayos de luz cuando ON */}
-                  {flashOn && (<>
-                    <line x1="22" y1="6" x2="22" y2="2" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    <line x1="14" y1="8" x2="11" y2="5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    <line x1="30" y1="8" x2="33" y2="5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    <line x1="10" y1="14" x2="6" y2="13" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                    <line x1="34" y1="14" x2="38" y2="13" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                  </>)}
-                </svg>
-              </button>
-            </div>
-            <span className={`text-sm font-black tracking-widest uppercase ${flashOn ? "text-white" : "text-zinc-500"}`}>
-              {flashOn ? "● ON" : "○ OFF"}
-            </span>
-            {flashError && <p className="text-xs text-red-400 text-center px-4">{flashError}</p>}
-          </div>
         </div>
 
-        {/* ── FOOTER ── */}
+        {/* FOOTER */}
         <div className="px-5 pb-5 pt-3 border-t border-zinc-800 text-center">
           <p className="text-sm text-zinc-600">← → desliza para cerrar</p>
         </div>
@@ -374,10 +226,6 @@ export default function SOSSwipePanel({ visible, onClose }) {
         @keyframes sosPulse {
           0%, 100% { opacity: 0.4; transform: scale(0.93); }
           50% { opacity: 1; transform: scale(1.14); }
-        }
-        @keyframes flashPulse {
-          0%, 100% { opacity: 0.5; transform: scale(0.95); }
-          50% { opacity: 1; transform: scale(1.1); }
         }
       `}</style>
     </>
