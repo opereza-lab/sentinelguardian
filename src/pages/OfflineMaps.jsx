@@ -58,7 +58,7 @@ export default function OfflineMaps() {
 
     // Geolocalización
     if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(
+    const watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
           setCoords({ lat: lat.toFixed(6), lng: lng.toFixed(6) });
@@ -93,6 +93,7 @@ export default function OfflineMaps() {
     }
 
     return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;

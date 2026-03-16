@@ -156,7 +156,7 @@ function LayoutInner({ children }) {
         </aside>
 
         {/* Main */}
-        <main className="flex-1 overflow-y-auto pb-8">
+        <main className="flex-1 overflow-y-auto pb-16">
           {children}
         </main>
       </div>
