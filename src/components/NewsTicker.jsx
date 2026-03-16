@@ -16,6 +16,7 @@ const STATIC_HEADLINES = {
     { title: "Últimas noticias de conflictos y emergencias mundiales — Reuters", url: "https://www.reuters.com/world" },
     { title: "Cobertura de conflictos armados en tiempo real — BBC Mundo", url: "https://www.bbc.com/mundo" },
     { title: "Alertas de catástrofes naturales y emergencias — Al Jazeera", url: "https://www.aljazeera.com/news" },
+
     { title: "Últimas alertas sísmicas y tsunamis — USGS", url: "https://www.usgs.gov/natural-hazards" },
     { title: "Noticias de zonas de conflicto activo — AP News", url: "https://apnews.com/world-news" },
     { title: "Alertas de emergencia y protección civil — OCHA", url: "https://www.unocha.org" },
