@@ -80,7 +80,8 @@ const STATIC_HEADLINES = {
 // Cache to avoid hitting APIs on every render
 let cachedHeadlines = null;
 let cacheTime = 0;
-const CACHE_DURATION = 0; // Sin caché — siempre noticias frescas
+const CACHE_DURATION = 0; // Sin caché — siempre pide noticias frescas al cargar
+const REFRESH_INTERVAL = 30 * 60 * 1000; // Refresca cada 30 minutos
 
 async function fetchFromNewsAPI(lang) {
   const apiKey = import.meta.env.VITE_NEWSAPI_KEY;
@@ -188,9 +189,9 @@ export default function NewsTicker() {
   useEffect(() => {
     fetchHeadlines(lang).then(setHeadlines);
     const interval = setInterval(() => {
-      cachedHeadlines = null; // force refresh
+      cachedHeadlines = null;
       fetchHeadlines(lang).then(setHeadlines);
-    }, CACHE_DURATION);
+    }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [lang]);
 
