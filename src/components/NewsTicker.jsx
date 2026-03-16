@@ -80,7 +80,7 @@ const STATIC_HEADLINES = {
 // Cache to avoid hitting APIs on every render
 let cachedHeadlines = null;
 let cacheTime = 0;
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const CACHE_DURATION = 0; // Sin caché — siempre noticias frescas
 
 async function fetchFromNewsAPI(lang) {
   const apiKey = import.meta.env.VITE_NEWSAPI_KEY;
