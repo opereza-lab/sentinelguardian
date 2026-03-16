@@ -16,7 +16,6 @@ const STATIC_HEADLINES = {
     { title: "Últimas noticias de conflictos y emergencias mundiales — Reuters", url: "https://www.reuters.com/world" },
     { title: "Cobertura de conflictos armados en tiempo real — BBC Mundo", url: "https://www.bbc.com/mundo" },
     { title: "Alertas de catástrofes naturales y emergencias — Al Jazeera", url: "https://www.aljazeera.com/news" },
-
     { title: "Últimas alertas sísmicas y tsunamis — USGS", url: "https://www.usgs.gov/natural-hazards" },
     { title: "Noticias de zonas de conflicto activo — AP News", url: "https://apnews.com/world-news" },
     { title: "Alertas de emergencia y protección civil — OCHA", url: "https://www.unocha.org" },
@@ -99,11 +98,11 @@ async function fetchFromNewsData(lang) {
   const apiKey = import.meta.env.VITE_NEWSDATA_KEY;
   if (!apiKey) return null;
   const langParam = ["es","fr","pt","it","ar","zh"].includes(lang) ? lang : "en";
-  const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&language=${langParam}&q=${encodeURIComponent("war OR conflict OR attack OR earthquake OR tsunami OR terrorism OR disaster OR Trump OR Putin OR Macron OR Gaza OR Ukraine")}&category=world,politics,top`;
+  const url = `https://newsdata.io/api/1/latest?apikey=${apiKey}&language=${langParam}&q=${encodeURIComponent("war OR conflict OR attack OR earthquake OR tsunami OR terrorism OR disaster OR Trump OR Putin OR Gaza OR Ukraine")}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error("NewsData failed");
+  if (!res.ok) throw new Error("NewsData failed " + res.status);
   const data = await res.json();
-  if (!data.results?.length) throw new Error("No articles");
+  if (data.status !== "success" || !data.results?.length) throw new Error(data.message || "No articles");
   return data.results.map(a => ({ title: a.title, url: a.link }));
 }
 
