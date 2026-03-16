@@ -94,6 +94,18 @@ async function fetchFromNewsAPI(lang) {
   return data.articles.map(a => ({ title: a.title, url: a.url }));
 }
 
+async function fetchFromNewsData(lang) {
+  const apiKey = import.meta.env.VITE_NEWSDATA_KEY;
+  if (!apiKey) return null;
+  const langParam = ["es","fr","pt","it","ar","zh"].includes(lang) ? lang : "en";
+  const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&language=${langParam}&q=${encodeURIComponent("war OR conflict OR attack OR earthquake OR tsunami OR terrorism OR disaster OR Trump OR Putin OR Macron OR Gaza OR Ukraine")}&category=world,politics,top`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("NewsData failed");
+  const data = await res.json();
+  if (!data.results?.length) throw new Error("No articles");
+  return data.results.map(a => ({ title: a.title, url: a.link }));
+}
+
 async function fetchFromGNews(lang) {
   const apiKey = import.meta.env.VITE_GNEWS_KEY;
   if (!apiKey) return null;
@@ -124,17 +136,17 @@ async function fetchHeadlines(lang) {
     return cachedHeadlines;
   }
 
-  // Layer 1: NewsAPI.org
+  // Layer 1: NewsData.io (permite CORS desde browser)
   try {
-    const articles = await fetchFromNewsAPI(lang);
+    const articles = await fetchFromNewsData(lang);
     if (articles && articles.length > 0) {
       cachedHeadlines = articles;
       cacheTime = now;
-      console.log("✅ Ticker: NewsAPI.org");
+      console.log("✅ Ticker: NewsData.io");
       return articles;
     }
   } catch (e) {
-    console.warn("NewsAPI failed:", e.message);
+    console.warn("NewsData failed:", e.message);
   }
 
   // Layer 2: GNews.io
